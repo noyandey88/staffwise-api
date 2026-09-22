@@ -1,5 +1,5 @@
 import { applyDecorators, HttpStatus, SetMetadata } from '@nestjs/common';
-import { UserRole } from '../../user/user.types.js';
+import type { UserRole } from '../../user/user.types.js';
 import { ApiErrorResponses } from './api-error-responses.decorator.js';
 
 export const ROLES_KEY = 'roles';

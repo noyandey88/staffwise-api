@@ -3,7 +3,7 @@ import * as schema from '../database/schema/index.js';
 import { users } from '../database/schema/index.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
-import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import { eq, type InferInsertModel, type InferSelectModel } from 'drizzle-orm';
 import { RegisterDto } from '../auth/dto/registerUser.dto.js';
 
 type User = InferSelectModel<typeof users>;

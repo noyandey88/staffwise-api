@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { type ExecutionContext, ForbiddenException } from '@nestjs/common';
+import type { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard.js';
 import { UserRole } from '../user/user.types.js';
 

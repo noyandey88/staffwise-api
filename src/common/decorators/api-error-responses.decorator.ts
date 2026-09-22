@@ -1,4 +1,4 @@
-import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { applyDecorators, type HttpStatus } from '@nestjs/common';
 import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../dto/error-response.dto.js';
 import { getHttpStatusName } from '../utils/http-status.util.js';

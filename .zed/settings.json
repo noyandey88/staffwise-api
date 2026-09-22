@@ -1,0 +1,22 @@
+{
+  "lsp": {
+    "vtsls": {
+      "settings": {
+        "typescript": {
+          "tsdk": "node_modules/typescript/lib",
+          "preferences": {
+            "preferTypeOnlyAutoImports": true,
+            "importModuleSpecifierEnding": "js"
+          }
+        }
+      }
+    }
+  },
+  "languages": {
+    "TypeScript": {
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    }
+  }
+}

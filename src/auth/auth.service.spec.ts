@@ -1,12 +1,12 @@
 import { vi, type Mocked } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import type { JwtService } from '@nestjs/jwt';
+import type { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service.js';
-import { UserService } from '../user/user.service.js';
-import { RefreshTokenRepository } from './refresh-token.repository.js';
+import type { UserService } from '../user/user.service.js';
+import type { RefreshTokenRepository } from './refresh-token.repository.js';
 
 describe('AuthService', () => {
   let service: AuthService;

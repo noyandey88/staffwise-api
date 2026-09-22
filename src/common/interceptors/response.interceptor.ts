@@ -1,15 +1,15 @@
 // src/common/interceptors/response.interceptor.ts
 import {
-  CallHandler,
-  ExecutionContext,
+  type CallHandler,
+  type ExecutionContext,
   Injectable,
-  NestInterceptor,
+  type NestInterceptor,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ApiResponse } from '../interfaces/api-response.interface.js';
+import type { ApiResponse } from '../interfaces/api-response.interface.js';
 import { RESPONSE_MESSAGE_KEY } from '../decorators/api-envelope.decorator.js';
 import { getHttpStatusName } from '../utils/http-status.util.js';
 

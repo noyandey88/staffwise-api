@@ -3,7 +3,7 @@ import {
   HttpCode,
   HttpStatus,
   SetMetadata,
-  Type,
+  type Type,
 } from '@nestjs/common';
 import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 import { getHttpStatusName } from '../utils/http-status.util.js';
