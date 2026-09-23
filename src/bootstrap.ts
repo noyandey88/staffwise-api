@@ -58,6 +58,8 @@ export async function createApp(): Promise<INestApplication> {
   }
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  app.setGlobalPrefix('api');
+
   if (configService.get<boolean>('SWAGGER_ENABLED')) {
     const config = new DocumentBuilder()
       .setTitle('Nestjs LMS')
