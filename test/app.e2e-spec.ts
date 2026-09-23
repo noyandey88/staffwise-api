@@ -1,6 +1,6 @@
-import { INestApplication } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types.js';
+import type { App } from 'supertest/types.js';
 import { createApp } from '../src/bootstrap.js';
 
 describe('API flow (e2e)', () => {

@@ -1,6 +1,6 @@
 // src/config/logger.config.ts
-import { ConfigService } from '@nestjs/config';
-import { Params } from 'nestjs-pino';
+import type { ConfigService } from '@nestjs/config';
+import type { Params } from 'nestjs-pino';
 
 /**
  * Pino options for LoggerModule.forRootAsync. Behavior is driven by

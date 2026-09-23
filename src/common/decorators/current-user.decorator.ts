@@ -1,5 +1,5 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { JwtPayload } from '../../auth/auth.types.js';
+import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
+import type { JwtPayload } from '../../auth/auth.types.js';
 
 /**
  * Injects the verified JWT payload that AuthGuard put on request.user.

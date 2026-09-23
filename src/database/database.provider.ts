@@ -1,8 +1,8 @@
 import {
   Inject,
   Injectable,
-  OnApplicationShutdown,
-  Provider,
+  type OnApplicationShutdown,
+  type Provider,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';

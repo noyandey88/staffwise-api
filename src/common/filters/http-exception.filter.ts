@@ -1,13 +1,13 @@
 // src/common/filters/http-exception.filter.ts
 import {
-  ArgumentsHost,
+  type ArgumentsHost,
   Catch,
-  ExceptionFilter,
+  type ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { getHttpStatusName } from '../utils/http-status.util.js';
 
 interface PgError {
