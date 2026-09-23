@@ -11,14 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CourseService } from './course.service.js';
-import {
-  type CreateCourseDto,
-  createCourseSchema,
-} from './dto/create-course.dto.js';
-import {
-  type UpdateCourseDto,
-  updateCourseSchema,
-} from './dto/update-course.dto.js';
+import { CreateCourseDto } from './dto/create-course.dto.js';
+import { UpdateCourseDto } from './dto/update-course.dto.js';
 import { CourseResponseDto } from './dto/course-response.dto.js';
 import { UserRole } from '../user/user.types.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
@@ -41,7 +35,7 @@ export class CourseController {
   @ApiEnvelope(CourseResponseDto, { message: 'Course created successfully' })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   async create(
-    @Body({ schema: createCourseSchema }) createCourseDto: CreateCourseDto,
+    @Body() createCourseDto: CreateCourseDto,
     @CurrentUser('email') creatorEmail: string,
   ) {
     return this.courseService.create(createCourseDto, creatorEmail);
@@ -80,7 +74,7 @@ export class CourseController {
   @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body({ schema: updateCourseSchema }) updateCourseDto: UpdateCourseDto,
+    @Body() updateCourseDto: UpdateCourseDto,
     @CurrentUser('email') updaterEmail: string,
   ) {
     return this.courseService.update(id, updateCourseDto, updaterEmail);

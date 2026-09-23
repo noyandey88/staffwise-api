@@ -1,7 +1,4 @@
-// update-course.schema.ts
-import type z from 'zod';
-import { createCourseSchema } from './create-course.dto.js';
+import { PartialType } from '@nestjs/swagger';
+import { CreateCourseDto } from './create-course.dto.js';
 
-export const updateCourseSchema = createCourseSchema.partial();
-
-export type UpdateCourseDto = z.infer<typeof updateCourseSchema>;
+export class UpdateCourseDto extends PartialType(CreateCourseDto) {}
