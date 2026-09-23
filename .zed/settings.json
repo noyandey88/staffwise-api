@@ -5,7 +5,6 @@
         "typescript": {
           "tsdk": "node_modules/typescript/lib",
           "preferences": {
-            "preferTypeOnlyAutoImports": true,
             "importModuleSpecifierEnding": "js"
           }
         }

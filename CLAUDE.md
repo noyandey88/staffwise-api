@@ -91,6 +91,5 @@ Do not add `@ApiBody` (inferred from `@Body()` types) or per-route `@HttpCode`/`
 
 ### Conventions
 
-- `verbatimModuleSyntax` is on, so every type-only binding must carry a `type` modifier (`import { type CreateCourseDto, createCourseSchema } from './dto/create-course.dto.js'`); TS errors with TS1484 otherwise. This is also what makes the editor's auto-import add `type` on its own — the TS language service treats a type-only import as *required* under this flag, in any tsserver-based editor (`.vscode/settings.json` and `.zed/settings.json` additionally set `preferTypeOnlyAutoImports`). `pnpm lint --fix` adds missing `type` modifiers, except inside classes carrying decorators (`@Injectable()`, `@Controller()`) — `@typescript-eslint/consistent-type-imports` deliberately skips those while `emitDecoratorMetadata` is enabled, so there `pnpm typecheck` is the gate. A decorated method signature (`@Body(...) dto: CreateCourseDto`) additionally fails with TS1272 if the `type` modifier is missing.
 - The project is native ESM (`"type": "module"`, `module: nodenext`). Every relative import must carry an explicit `.js` extension (`./foo.js`, `../bar/index.js`), even though the source is `.ts`; tsc rejects extensionless imports. There is no `src/*` alias.
 - Swagger: tag controllers with `@ApiTags`, document endpoints with `@ApiOperation`.
