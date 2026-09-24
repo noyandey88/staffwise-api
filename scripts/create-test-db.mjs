@@ -1,5 +1,5 @@
 // Creates the database named in DATABASE_URL if it does not exist.
-// Invoked via `pnpm db:create:test`, which loads env/.env.test first.
+// Invoked via `pnpm db:create:test`, which uses the root .env file.
 import pg from 'pg';
 
 const url = new URL(process.env.DATABASE_URL);

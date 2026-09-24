@@ -29,8 +29,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:migrate:test": "dotenv -e env/.env.test -- drizzle-kit migrate",
-    "db:create:test": "dotenv -e env/.env.test -- node scripts/create-test-db.mjs"
+    "db:migrate:test": "drizzle-kit migrate",
+    "db:create:test": "node scripts/create-test-db.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.0",
@@ -67,7 +67,6 @@
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "dotenv-cli": "^7.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",

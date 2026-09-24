@@ -1,15 +1,4 @@
 import { z } from 'zod';
-import { APP_MODE } from './app-mode.js';
-
-export const APP_ENVS = [
-  'local',
-  'test',
-  'dev',
-  'staging',
-  'beta',
-  'production',
-] as const;
-export type AppEnv = (typeof APP_ENVS)[number];
 
 const booleanString = z
   .enum(['true', 'false'])
@@ -21,9 +10,6 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
-  // Defaults to the APP_MODE constant (src/config/app-mode.ts) so the
-  // validated value matches the stage file that actually loaded.
-  APP_ENV: z.enum(APP_ENVS).default(APP_MODE),
 
   PORT: z.coerce.number().int().positive().default(3000),
 

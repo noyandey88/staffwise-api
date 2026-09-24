@@ -20,7 +20,7 @@ import { Pool } from 'pg';
 const configModule = ConfigModule.forRoot({
   isGlobal: true,
   validate: validateEnv,
-  envFilePath: resolveEnvFiles(process.env),
+  envFilePath: resolveEnvFiles(),
 });
 
 const observeAppKey = process.env.OBSERVE_APP_KEY;

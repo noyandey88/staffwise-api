@@ -19,7 +19,7 @@ Production-ready NestJS 12 starter template with Drizzle ORM (PostgreSQL), JWT a
 ```bash
 nvm use                       # Node 24.9+ required (see .nvmrc)
 pnpm install
-cp .env.example .env          # optional: personal overrides only — env/.env.local already has working compose defaults
+cp .env.example .env
 docker compose up -d postgres
 pnpm db:migrate
 pnpm start:dev                # http://localhost:3000, Swagger at /api
@@ -27,63 +27,32 @@ pnpm start:dev                # http://localhost:3000, Swagger at /api
 
 ## Environment variables
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `APP_ENV` | no | `local` | `local` / `test` / `dev` / `staging` / `beta` / `production` — selects the `env/.env.<stage>` instance (see [Environments](#environments)) |
-| `DATABASE_URL` | yes | — | PostgreSQL connection string |
-| `DB_POOL_MAX` | no | `10` | pg pool size |
-| `DB_CONNECT_TIMEOUT_MS` | no | `5000` | fail a pool checkout after this long instead of queueing forever |
-| `DB_STATEMENT_TIMEOUT_MS` | no | `15000` | Postgres `statement_timeout` for every connection |
-| `JWT_SECRET` | yes | — | Secret for signing access tokens |
-| `THROTTLE_TTL` | yes | — | Rate-limit window (seconds) — set per stage file |
-| `THROTTLE_LIMIT` | yes | — | Max requests per window — set per stage file |
-| `PORT` | no | `3000` | HTTP port |
-| `NODE_ENV` | no | `development` | `development` / `production` / `test` — set BY the stage file, don't set by hand |
-| `LOG_LEVEL` | no | `info` in production, else `debug` | pino log level |
-| `LOG_PRETTY` | no | `false` | human-readable one-line logs (pino-pretty) |
-| `LOG_HTTP_BODIES` | no | `false` | request bodies + response payloads in logs (redacted) |
-| `SWAGGER_ENABLED` | no | `false` | serve Swagger UI at `/api` |
-| `JWT_ACCESS_EXPIRES_IN` | no | `300` | Access-token lifetime (seconds) |
-| `JWT_REFRESH_EXPIRES_IN` | no | `604800` | Refresh-token lifetime (seconds) |
-| `CORS_ORIGINS` | no | _(empty)_ | Comma-separated allowed origins; empty disables CORS |
-| `OBSERVE_APP_KEY` / `OBSERVE_APP_SECRET` | no | _(unset)_ | `@nestjs/observe` credentials; telemetry and instrumentation run only when both are set |
+| Variable                                 | Required | Default                            | Description                                                                             |
+| ---------------------------------------- | -------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                           | yes      | —                                  | PostgreSQL connection string                                                            |
+| `DB_POOL_MAX`                            | no       | `10`                               | pg pool size                                                                            |
+| `DB_CONNECT_TIMEOUT_MS`                  | no       | `5000`                             | fail a pool checkout after this long instead of queueing forever                        |
+| `DB_STATEMENT_TIMEOUT_MS`                | no       | `15000`                            | Postgres `statement_timeout` for every connection                                       |
+| `JWT_SECRET`                             | yes      | —                                  | Secret for signing access tokens                                                        |
+| `THROTTLE_TTL`                           | yes      | —                                  | Rate-limit window (seconds)                                                             |
+| `THROTTLE_LIMIT`                         | yes      | —                                  | Max requests per window                                                                 |
+| `PORT`                                   | no       | `3000`                             | HTTP port                                                                               |
+| `NODE_ENV`                               | no       | `development`                      | `development` / `production` / `test`                                                   |
+| `LOG_LEVEL`                              | no       | `info` in production, else `debug` | pino log level                                                                          |
+| `LOG_PRETTY`                             | no       | `false`                            | human-readable one-line logs (pino-pretty)                                              |
+| `LOG_HTTP_BODIES`                        | no       | `false`                            | request bodies + response payloads in logs (redacted)                                   |
+| `SWAGGER_ENABLED`                        | no       | `false`                            | serve Swagger UI at `/api`                                                              |
+| `JWT_ACCESS_EXPIRES_IN`                  | no       | `300`                              | Access-token lifetime (seconds)                                                         |
+| `JWT_REFRESH_EXPIRES_IN`                 | no       | `604800`                           | Refresh-token lifetime (seconds)                                                        |
+| `CORS_ORIGINS`                           | no       | _(empty)_                          | Comma-separated allowed origins; empty disables CORS                                    |
+| `OBSERVE_APP_KEY` / `OBSERVE_APP_SECRET` | no       | _(unset)_                          | `@nestjs/observe` credentials; telemetry and instrumentation run only when both are set |
 
-## Environments
+## Configuration
 
-The app runs as one of six instances selected by `APP_ENV`
-(`local` | `test` | `dev` | `staging` | `beta` | `production`, default
-`local`). Each instance's config lives in the committed `env/` directory
-— one place to see and diff every instance. Behavior is driven by
-explicit flags in those files, never by env-name checks:
-
-| flag | does |
-|---|---|
-| `LOG_LEVEL` | pino level (defaults: `info` in production, else `debug`) |
-| `LOG_PRETTY` | human-readable one-line logs (pino-pretty) |
-| `LOG_HTTP_BODIES` | request bodies + response payloads in logs (redacted) |
-| `SWAGGER_ENABLED` | serve Swagger UI at `/api` |
-
-Precedence, first wins: injected process env → `.env` (gitignored
-personal overrides) → `env/.env.<stage>.local` (gitignored) →
-`env/.env.<stage>` (committed). Real deployments can inject secrets as
-process env — injected values always beat the files.
-
-Switch the instance by editing one constant — `APP_MODE` in
-`src/config/app-mode.ts`:
-
-```ts
-export const APP_MODE: AppEnv = 'production';
-```
-
-Then run the app normally (`pnpm start:dev`, or `pnpm build && pnpm
-start:prod`). The drizzle CLI follows the same switch, so `pnpm
-db:migrate` targets the selected instance's database. An injected
-`APP_ENV` env var overrides the constant (the Docker image sets
-`APP_ENV=production`), and vitest unit and e2e runs always resolve to the `test`
-instance (`env/.env.test`) regardless of the mode.
-
-Drizzle commands (`db:generate`, `db:migrate`, `db:push`, `db:studio`) load the
-same cascade, so they honor `APP_ENV` too, e.g. `APP_ENV=staging pnpm db:migrate`.
+The root `.env` is the single source of truth for local development, tests,
+Drizzle commands, and Docker Compose. Copy `.env.example` to `.env` once and
+edit the values there. Process variables injected by the shell or deployment
+platform still override `.env` values.
 
 ## Project structure
 

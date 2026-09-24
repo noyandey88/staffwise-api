@@ -24,8 +24,8 @@ pnpm db:migrate         # apply migrations
 pnpm db:push            # push schema directly (no migration file)
 pnpm db:studio          # Drizzle Studio UI
 
-pnpm db:create:test     # create the test database (reads env/.env.test); runs scripts/create-test-db.mjs
-pnpm db:migrate:test    # apply migrations to the test database (reads env/.env.test)
+pnpm db:create:test     # create the database named by .env; runs scripts/create-test-db.mjs
+pnpm db:migrate:test    # apply migrations using the root .env
 pnpm test:e2e           # e2e tests (vitest.config.e2e.ts) — requires:
                         #   docker compose up -d postgres
                         #   pnpm db:create:test && pnpm db:migrate:test
@@ -34,19 +34,9 @@ pnpm test:e2e           # e2e tests (vitest.config.e2e.ts) — requires:
 Config is zod-validated at boot (`src/config/env.validation.ts`,
 `validateEnv`) — `DATABASE_URL`, `JWT_SECRET`, `THROTTLE_TTL`, and
 `THROTTLE_LIMIT` are required; everything else has schema defaults; the
-app fails fast with a descriptive error. The instance
-(`local|test|dev|staging|beta|production`) is selected by the `APP_MODE`
-constant in `src/config/app-mode.ts` — edit that one value to switch;
-an injected `APP_ENV` env var overrides it (Docker sets
-`APP_ENV=production`). `ConfigModule` loads, in precedence order,
-process env → `.env` → `env/.env.<stage>.local` → `env/.env.<stage>`
-(`src/config/env-files.ts`). The committed `env/` files each set
-`NODE_ENV` and the behavior flags (`LOG_LEVEL`, `LOG_PRETTY`,
-`LOG_HTTP_BODIES`, `SWAGGER_ENABLED`); `dev`/`staging`/`beta`/`production` deliberately omit `DATABASE_URL` and `JWT_SECRET` so an un-injected deployment fails at boot, while `local`/`test` carry the docker-compose credentials — app code reads flags, never
-`NODE_ENV` names, for feature decisions; pino options live in
-`src/config/logger.config.ts`. `NODE_ENV=test` (vitest) always resolves to
-the `test` instance. Token lifetimes are in **seconds**.
-`drizzle.config.ts` loads the same `resolveEnvFiles` cascade as the app (`src/config/env-files.ts`) via `dotenv`, rather than Nest's ConfigModule — the drizzle CLI honors `APP_ENV` too.
+app fails fast with a descriptive error. Both Nest and Drizzle load the
+root `.env` through `src/config/env-files.ts`; injected process variables
+override values from that file. Token lifetimes are in **seconds**.
 
 ## Architecture
 
@@ -81,6 +71,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `course`, `health`), 
 `createApp()` in `src/bootstrap.ts` builds the whole app — observe instrumentation, pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens; the e2e suite calls it and `init()`s, so tests run the production bootstrap. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
 
 Per-route contract lives in composed decorators (`src/common/decorators/`):
+
 - `@ApiEnvelope(PayloadDto, { message })` — sets the HTTP code (default 200), the envelope message, and the Swagger success schema (envelope + payload DTO). Use `null` for null payloads, `isArray: true` for lists.
 - `@Auth()` — `AuthGuard` + `RolesGuard` + Swagger bearer (`access-token`) + documented 401. Class-level when every route is protected.
 - `@Roles(...UserRole)` — restricts an `@Auth()` route to those roles and documents the 403.

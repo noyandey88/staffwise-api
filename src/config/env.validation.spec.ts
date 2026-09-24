@@ -1,5 +1,4 @@
-import { APP_MODE } from './app-mode.js';
-import { validateEnv, APP_ENVS } from './env.validation.js';
+import { validateEnv } from './env.validation.js';
 
 const base = {
   DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/db',
@@ -11,7 +10,6 @@ const base = {
 describe('validateEnv', () => {
   it('accepts a minimal valid config and applies defaults', () => {
     const env = validateEnv(base);
-    expect(env.APP_ENV).toBe(APP_MODE);
     expect(env.NODE_ENV).toBe('development');
     expect(env.PORT).toBe(3000);
     expect(env.LOG_PRETTY).toBe(false);
@@ -20,16 +18,6 @@ describe('validateEnv', () => {
     expect(env.JWT_ACCESS_EXPIRES_IN).toBe(300);
     expect(env.JWT_REFRESH_EXPIRES_IN).toBe(604800);
     expect(env.CORS_ORIGINS).toBe('');
-  });
-
-  it('accepts each known APP_ENV stage', () => {
-    for (const stage of APP_ENVS) {
-      expect(validateEnv({ ...base, APP_ENV: stage }).APP_ENV).toBe(stage);
-    }
-  });
-
-  it('rejects an unknown APP_ENV', () => {
-    expect(() => validateEnv({ ...base, APP_ENV: 'qa' })).toThrow(/APP_ENV/);
   });
 
   it('parses boolean flags from strings — including the "false" trap', () => {
