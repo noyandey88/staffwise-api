@@ -71,6 +71,13 @@
       "when": 1790310403667,
       "tag": "0009_fixed_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790331642020,
+      "tag": "0010_giant_mantis",
+      "breakpoints": true
     }
   ]
 }

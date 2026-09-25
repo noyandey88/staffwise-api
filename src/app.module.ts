@@ -6,13 +6,13 @@ import { AuthModule } from './auth/auth.module.js';
 import { UserModule } from './user/user.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CourseModule } from './course/course.module.js';
 import { HealthModule } from './health/health.module.js';
 import { validateEnv } from './config/env.validation.js';
 import { resolveEnvFiles } from './config/env-files.js';
 import { createLoggerOptions } from './config/logger.config.js';
 import { createObserveModule } from '@nestjs/observe';
 import { Pool } from 'pg';
+import { EmployeesModule } from './employees/employees.module.js';
 
 // Loads the env-file cascade into process.env synchronously, so the
 // observe decision below can read the validated keys before the
@@ -59,7 +59,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
     AuthModule,
     UserModule,
     DatabaseModule,
-    CourseModule,
     HealthModule,
     ...(observeEnabled
       ? [
@@ -70,7 +69,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
           }),
         ]
       : []),
+    EmployeesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  controllers: [],
 })
 export class AppModule {}
