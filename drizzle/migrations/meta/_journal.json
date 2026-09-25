@@ -64,6 +64,13 @@
       "when": 1788865789131,
       "tag": "0008_course_level_not_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790310403667,
+      "tag": "0009_fixed_quicksilver",
+      "breakpoints": true
     }
   ]
 }

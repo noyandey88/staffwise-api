@@ -62,9 +62,9 @@ export async function createApp(): Promise<INestApplication> {
 
   if (configService.get<boolean>('SWAGGER_ENABLED')) {
     const config = new DocumentBuilder()
-      .setTitle('Nestjs LMS')
-      .setDescription('The LMS description')
-      .setVersion('1.0')
+      .setTitle(configService.getOrThrow<string>('NAME'))
+      .setDescription(configService.getOrThrow<string>('DESCRIPTION'))
+      .setVersion(configService.getOrThrow<string>('VERSION'))
       .addBearerAuth(
         {
           type: 'http',

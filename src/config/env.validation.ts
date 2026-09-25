@@ -13,6 +13,10 @@ const envSchema = z.object({
 
   PORT: z.coerce.number().int().positive().default(3000),
 
+  NAME: z.string().min(1).default('Nestjs Starter'),
+  DESCRIPTION: z.string().min(1).default('The LMS description'),
+  VERSION: z.string().min(1).default('1.0'),
+
   // Logging — values, not name-checks
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
