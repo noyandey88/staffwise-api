@@ -13,6 +13,7 @@ import { createLoggerOptions } from './config/logger.config.js';
 import { createObserveModule } from '@nestjs/observe';
 import { Pool } from 'pg';
 import { EmployeesModule } from './employees/employees.module.js';
+import { DepartmentModule } from './department/department.module.js';
 
 // Loads the env-file cascade into process.env synchronously, so the
 // observe decision below can read the validated keys before the
@@ -70,6 +71,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
         ]
       : []),
     EmployeesModule,
+    DepartmentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

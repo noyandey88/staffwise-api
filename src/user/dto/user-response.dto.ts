@@ -15,7 +15,7 @@ export class UserResponseDto {
   @ApiProperty({ example: 'ada@example.com' })
   email!: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.Student })
+  @ApiProperty({ enum: UserRole, example: UserRole.Employee })
   role!: string;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })

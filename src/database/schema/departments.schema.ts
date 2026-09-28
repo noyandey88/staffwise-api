@@ -1,7 +1,7 @@
-import { pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { integer, pgTable, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 export const departments = pgTable('departments', {
-  id: serial('id').primaryKey(),
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar('name', { length: 100 }).notNull().unique(),
   createdAt: timestamp('created_at', {
     withTimezone: true,
@@ -11,3 +11,6 @@ export const departments = pgTable('departments', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export type NewDepartment = typeof departments.$inferInsert;
+export type Department = typeof departments.$inferSelect;

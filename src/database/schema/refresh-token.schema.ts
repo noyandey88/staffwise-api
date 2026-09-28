@@ -1,6 +1,5 @@
 import {
   pgTable,
-  serial,
   integer,
   varchar,
   boolean,
@@ -14,7 +13,7 @@ import { users } from './user.schema.js';
 export const refreshTokens = pgTable(
   'refresh_tokens',
   {
-    id: serial('id').primaryKey(),
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),

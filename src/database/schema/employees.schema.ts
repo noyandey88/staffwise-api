@@ -3,7 +3,6 @@ import {
   integer,
   pgEnum,
   pgTable,
-  serial,
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -19,7 +18,7 @@ export const employeesEnum = pgEnum('employee_status', [
 ]);
 
 export const employees = pgTable('employees', {
-  id: serial('id').primaryKey(),
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
   userId: integer('user_id')
     .references(() => users.id)
     .notNull()
@@ -39,3 +38,6 @@ export const employees = pgTable('employees', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export type NewEmployee = typeof employees.$inferInsert;
+export type Employee = typeof employees.$inferSelect;

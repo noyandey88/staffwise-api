@@ -39,10 +39,12 @@ export class EmployeesService {
   }
 
   async update(data: UpdateEmployeeDto) {
+    await this.findById(data.id);
     return await this.employeesRepository.update(data.id, data);
   }
 
   async delete(id: number) {
+    await this.findById(id);
     await this.employeesRepository.remove(id);
   }
 }

@@ -3,9 +3,8 @@ import { DRIZZLE_ORM } from '../database/database.constants.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schema/index.js';
 import { employees } from '../database/schema/employees.schema.js';
-import { eq, InferSelectModel } from 'drizzle-orm';
-
-type Employee = InferSelectModel<typeof employees>;
+import { eq } from 'drizzle-orm';
+import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
 
 @Injectable()
 export class EmployeesRepository {
@@ -13,7 +12,7 @@ export class EmployeesRepository {
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async create(data: typeof employees.$inferInsert): Promise<Employee> {
+  async create(data: NewEmployee): Promise<Employee> {
     const [employee] = await this.db.insert(employees).values(data).returning();
     return employee;
   }
