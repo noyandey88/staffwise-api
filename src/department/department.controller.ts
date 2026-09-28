@@ -18,6 +18,7 @@ import { UserRole } from '../user/user.types.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
+import { DepartmentResponseDto } from './dto/dto/department-response.dto.js';
 
 @Auth()
 @ApiTags('Departments')
@@ -31,7 +32,9 @@ export class DepartmentController {
     summary: 'Create a new department',
     description: 'Creates a new department using the provided details.',
   })
-  @ApiEnvelope(null, { message: 'Department created successfully' })
+  @ApiEnvelope(DepartmentResponseDto, {
+    message: 'Department created successfully',
+  })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   create(@Body() createDepartmentDto: CreateDepartmentDto) {
     return this.departmentService.create(createDepartmentDto);
@@ -42,7 +45,7 @@ export class DepartmentController {
     summary: 'Retrieve all departments',
     description: 'Fetches a list of all departments.',
   })
-  @ApiEnvelope(null, {
+  @ApiEnvelope(DepartmentResponseDto, {
     message: 'Departments retrieved successfully',
     isArray: true,
   })
@@ -55,7 +58,9 @@ export class DepartmentController {
     summary: 'Retrieve a department by ID',
     description: 'Fetches a department by its ID.',
   })
-  @ApiEnvelope(null, { message: 'Department retrieved successfully' })
+  @ApiEnvelope(DepartmentResponseDto, {
+    message: 'Department retrieved successfully',
+  })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.departmentService.findById(id);
   }
@@ -65,7 +70,9 @@ export class DepartmentController {
     summary: 'Update a department',
     description: 'Updates a department using the provided details.',
   })
-  @ApiEnvelope(null, { message: 'Department updated successfully' })
+  @ApiEnvelope(DepartmentResponseDto, {
+    message: 'Department updated successfully',
+  })
   @Roles(UserRole.Admin, UserRole.Hr)
   update(@Body() updateDepartmentDto: UpdateDepartmentDto) {
     return this.departmentService.update(updateDepartmentDto);
