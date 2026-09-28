@@ -18,7 +18,7 @@ import { UserRole } from '../user/user.types.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
-import { DepartmentResponseDto } from './dto/dto/department-response.dto.js';
+import { DepartmentResponseDto } from './dto/department-response.dto.js';
 
 @Auth()
 @ApiTags('Departments')
