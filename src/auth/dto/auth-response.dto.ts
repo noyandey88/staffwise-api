@@ -5,9 +5,7 @@ export class TokenPairResponseDto {
   accessToken!: string;
   refreshToken!: string;
   accessTokenExpiresIn!: number;
-  accessTokenExpiresAt!: number;
   refreshTokenExpiresIn!: number;
-  refreshTokenExpiresAt!: number;
 }
 
 /** Return shape of AuthService.loginUser. */

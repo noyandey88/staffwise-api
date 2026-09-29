@@ -8,6 +8,7 @@ import { EmployeesService } from '../employees/employees.service.js';
 import { currentMonth, monthRange, today } from './attendance.util.js';
 import { UserRole } from '../user/user.types.js';
 import { JwtPayload } from '../auth/auth.types.js';
+import { EmployeeStatus } from '../employees/employees.enum.js';
 
 @Injectable()
 export class AttendanceService {
@@ -17,7 +18,7 @@ export class AttendanceService {
   ) {}
 
   async checkIn(userId: number) {
-    const employee = await this.employeeService.findByUserId(userId);
+    const employee = await this.findActiveEmployee(userId);
     const record = await this.attendanceRepository.checkIn(
       employee.id,
       today(),
@@ -31,7 +32,7 @@ export class AttendanceService {
   }
 
   async checkOut(userId: number) {
-    const employee = await this.employeeService.findByUserId(userId);
+    const employee = await this.findActiveEmployee(userId);
     const record = await this.attendanceRepository.checkOut(
       employee.id,
       today(),
@@ -72,6 +73,19 @@ export class AttendanceService {
   async summary(month = currentMonth()) {
     const { start, end } = monthRange(month);
     return await this.attendanceRepository.monthlySummary(start, end);
+  }
+
+  /** Only active employees record attendance (on-leave staff cannot). */
+  private async findActiveEmployee(userId: number) {
+    const employee = await this.employeeService.findByUserId(userId);
+
+    if (employee.status !== EmployeeStatus.Active) {
+      throw new ForbiddenException(
+        `Attendance cannot be recorded while status is ${employee.status}`,
+      );
+    }
+
+    return employee;
   }
 
   /** Admin/HR see anyone; managers see themselves and anyone below them. */

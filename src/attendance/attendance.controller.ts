@@ -34,7 +34,11 @@ export class AttendanceController {
     message: 'Checked in successfully',
     status: HttpStatus.CREATED,
   })
-  @ApiErrorResponses(HttpStatus.CONFLICT, HttpStatus.NOT_FOUND)
+  @ApiErrorResponses(
+    HttpStatus.CONFLICT,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.FORBIDDEN,
+  )
   create(@CurrentUser('sub') userId: number) {
     return this.attendanceService.checkIn(userId);
   }
@@ -44,7 +48,11 @@ export class AttendanceController {
   @ApiEnvelope(AttendanceRecordResponseDto, {
     message: 'Checked out successfully',
   })
-  @ApiErrorResponses(HttpStatus.CONFLICT, HttpStatus.NOT_FOUND)
+  @ApiErrorResponses(
+    HttpStatus.CONFLICT,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.FORBIDDEN,
+  )
   checkOut(@CurrentUser('sub') userId: number) {
     return this.attendanceService.checkOut(userId);
   }

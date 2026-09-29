@@ -9,7 +9,7 @@ import { UserRole } from '../../user/user.types.js';
 
 export const userRoleEnum = pgEnum(
   'user_role',
-  Object.values(UserRole) as [string, ...string[]],
+  Object.values(UserRole) as [UserRole, ...UserRole[]],
 );
 
 export const users = pgTable('users', {
@@ -19,7 +19,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 100 }).unique().notNull(),
   password: varchar('password', { length: 255 }).notNull(),
   role: userRoleEnum('role').notNull().default(UserRole.Employee),
-  createdAt: timestamp('created_At', {
+  createdAt: timestamp('created_at', {
     withTimezone: true,
     mode: 'date',
   }).defaultNow(),
@@ -27,3 +27,6 @@ export const users = pgTable('users', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;

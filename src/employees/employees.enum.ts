@@ -6,3 +6,10 @@ export enum EmployeeStatus {
   Retired = 'retired',
   Resigned = 'resigned',
 }
+
+/** Former staff: their user account can no longer sign in. */
+export const SIGN_IN_BLOCKED_STATUSES: readonly EmployeeStatus[] = [
+  EmployeeStatus.Terminated,
+  EmployeeStatus.Resigned,
+  EmployeeStatus.Retired,
+];

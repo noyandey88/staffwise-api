@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import { createHash, randomBytes } from 'node:crypto';
+import { UserRole } from '../user/user.types.js';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,7 @@ export class AuthService {
 
   async loginUser(loginDto: LoginDto) {
     const user = await this.userService.findUser(loginDto);
+    await this.userService.assertCanSignIn(user.id);
 
     // Cheap, bounded housekeeping: every login sheds this user's dead rows
     // so the table never accumulates unbounded revoked/expired tokens.
@@ -61,14 +63,32 @@ export class AuthService {
 
     const user = await this.userService.findUserById(stored.userId);
 
+    try {
+      await this.userService.assertCanSignIn(user.id);
+    } catch (err) {
+      // Deactivated since this token was issued: end every session.
+      await this.refreshTokenRepository.revokeAllForUser(user.id);
+      throw err;
+    }
+
     return this.issueTokenPair(user.id, user.email, user.role);
+  }
+
+  /** Changing the password signs the user out of every session. */
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    await this.userService.changePassword(userId, currentPassword, newPassword);
+    await this.refreshTokenRepository.revokeAllForUser(userId);
   }
 
   async logout(userId: number) {
     return await this.refreshTokenRepository.revokeAllForUser(userId);
   }
 
-  private async issueTokenPair(userId: number, email: string, role: string) {
+  private async issueTokenPair(userId: number, email: string, role: UserRole) {
     const [access, refresh] = await Promise.all([
       this.issueAccessToken(userId, email, role),
       this.issueRefreshToken(userId),
@@ -78,13 +98,15 @@ export class AuthService {
       accessToken: access.accessToken,
       refreshToken: refresh.refreshToken,
       accessTokenExpiresIn: access.expiresIn,
-      accessTokenExpiresAt: access.expiresAt,
       refreshTokenExpiresIn: refresh.expiresIn,
-      refreshTokenExpiresAt: refresh.expiresAt,
     };
   }
 
-  private async issueAccessToken(userId: number, email: string, role: string) {
+  private async issueAccessToken(
+    userId: number,
+    email: string,
+    role: UserRole,
+  ) {
     const payload = { sub: userId, email: email, role: role };
     const token = await this.jwtService.signAsync(payload);
     const expiresIn = this.configService.get<number>('JWT_ACCESS_EXPIRES_IN')!;
@@ -92,7 +114,6 @@ export class AuthService {
     return {
       accessToken: token,
       expiresIn,
-      expiresAt: Math.floor(Date.now() / 1000) + expiresIn,
     };
   }
 
@@ -110,7 +131,6 @@ export class AuthService {
     return {
       refreshToken: rawRefreshToken,
       expiresIn,
-      expiresAt: Math.floor(expiresAt.getTime() / 1000),
     };
   }
 
