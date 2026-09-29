@@ -7,7 +7,7 @@ HR management API built with NestJS 12, Drizzle ORM (PostgreSQL) and JWT authent
 - **Employees**: an employee record per user, linked to a department and an optional manager (an org tree, so managers see their direct and indirect reports)
 - **Departments**: create, list, update, delete
 - **Attendance**: once-a-day check-in/check-out, monthly history, lateness and overtime computed per day, and a ranked monthly summary
-- **Roles**: `admin`, `hr`, `manager`, `employee`, enforced with `@Roles()`
+- **Roles**: `super_admin` (seeded once), `admin`, `hr`, `manager`, `employee`, enforced with `@Roles()`
 - **Auth**: admin/HR-created accounts, login, password change, short-lived JWT access tokens, rotating single-use refresh tokens with reuse detection, logout-everywhere
 - **Consistent responses**: every endpoint returns `{ success, status, message, payload }`
 - **Operations**: validated config (boot fails fast), helmet, CORS, rate limiting (stricter on auth), pino logs with secrets redacted, `GET /api/health`, graceful shutdown
@@ -18,25 +18,27 @@ HR management API built with NestJS 12, Drizzle ORM (PostgreSQL) and JWT authent
 ```bash
 nvm use                       # Node 24.9+ required (see .nvmrc)
 pnpm install
-cp .env.example .env          # then set DATABASE_URL, JWT_SECRET, THROTTLE_TTL, THROTTLE_LIMIT
+cp .env.example .env          # then set DATABASE_URL, JWT_SECRET, THROTTLE_TTL, THROTTLE_LIMIT,
+                              # and SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD
 docker compose up -d postgres # creates the database from POSTGRES_* in .env
 pnpm db:migrate
-pnpm start:dev                # http://localhost:3000/api/...
+pnpm start:dev                # seeds the super admin on first start; http://localhost:3000/api/...
 ```
 
 Set `SWAGGER_ENABLED=true` to serve Swagger UI at `http://localhost:3000/api` (also `/docs`, JSON at `/docs-json`).
 
-### Roles and the first admin
+### Super admin and roles
 
-There is no public signup: admins and HR create accounts with `POST /api/auth/register` (always role `employee`), and users then replace the initial password with `PATCH /api/auth/password`. Create the first admin with the CLI script:
+On startup the app creates a `super_admin` from `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD`, **only if no super admin exists yet**:
 
-```bash
-pnpm admin:create --email you@example.com                  # promote an existing user
-ADMIN_PASSWORD='...' pnpm admin:create --email you@example.com \
-  --first-name Ada --last-name Lovelace                    # or create a new admin user
-```
+- The env password is used once, at creation. Changing it in `.env` later has no effect; change it with `PATCH /api/auth/password` after the first login.
+- Changing `SUPER_ADMIN_EMAIL` later does not create a second super admin.
+- If the email already belongs to another user, nothing is seeded (the user is never promoted) and a warning is logged.
+- If the variables are unset and no super admin exists, a warning is logged and the app starts anyway.
 
-After that, admins change roles with `PATCH /api/users/:id/role` (admins cannot change their own role). A new role applies once the user logs in again or refreshes their token, because the role is carried in the access token.
+The super admin passes every role check, is never blocked by employee status, and its role cannot be changed or assigned through the API.
+
+There is no public signup: admins and HR create accounts with `POST /api/auth/register` (always role `employee`), and users then replace the initial password with `PATCH /api/auth/password`. The super admin and admins change roles with `PATCH /api/users/:id/role` (`admin`, `hr`, `manager` or `employee`; never your own role). A new role applies once the user logs in again or refreshes their token, because the role is carried in the access token.
 
 ## API overview
 
@@ -84,6 +86,7 @@ Attendance dates use the `Asia/Dhaka` timezone. The workday starts at 09:00 with
 | `JWT_REFRESH_EXPIRES_IN`                    | no       | `604800`                           | Refresh-token lifetime (seconds)                                                        |
 | `CORS_ORIGINS`                              | no       | _(empty)_                          | Comma-separated allowed origins; empty disables CORS                                    |
 | `OBSERVE_APP_KEY` / `OBSERVE_APP_SECRET`    | no       | _(unset)_                          | `@nestjs/observe` credentials; telemetry and instrumentation run only when both are set |
+| `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | no (both or neither) | _(unset)_          | Super admin created on startup if none exists; password 8–72 characters, used only at creation |
 
 The root `.env` is the single source of truth for local development, tests, Drizzle commands and Docker Compose. Process variables injected by the shell or deployment platform override values in `.env`.
 

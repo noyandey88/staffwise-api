@@ -12,7 +12,7 @@ import type { JwtPayload } from './auth.types.js';
 /**
  * Runs after AuthGuard (both are installed by @Auth()). Passes when the
  * route declares no @Roles(); otherwise the verified JWT role must be one
- * of them.
+ * of them. The super admin passes every role check.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -28,7 +28,10 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest<{ user?: JwtPayload }>();
-    if (!user || !required.includes(user.role)) {
+    if (
+      !user ||
+      (user.role !== UserRole.SuperAdmin && !required.includes(user.role))
+    ) {
       throw new ForbiddenException(
         'You do not have permission to perform this action',
       );

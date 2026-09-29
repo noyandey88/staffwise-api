@@ -72,8 +72,11 @@ export class UserService {
    * Former staff (terminated/resigned/retired) cannot sign in. Users without
    * an employee record (e.g. a bootstrap admin) are unaffected.
    */
-  async assertCanSignIn(id: number) {
-    const status = await this.userRepository.findEmploymentStatus(id);
+  async assertCanSignIn(user: { id: number; role: UserRole }) {
+    // The super admin must never be locked out by HR data.
+    if (user.role === UserRole.SuperAdmin) return;
+
+    const status = await this.userRepository.findEmploymentStatus(user.id);
 
     if (status && SIGN_IN_BLOCKED_STATUSES.includes(status)) {
       throw new ForbiddenException('This account has been deactivated');
@@ -114,12 +117,17 @@ export class UserService {
       throw new ForbiddenException('You cannot change your own role');
     }
 
-    const user = await this.userRepository.updateRole(targetId, role);
+    const target = await this.userRepository.findById(targetId);
 
-    if (!user) {
+    if (!target) {
       throw new NotFoundException('User not found');
     }
 
+    if (target.role === UserRole.SuperAdmin) {
+      throw new ForbiddenException("The super admin's role cannot be changed");
+    }
+
+    const user = (await this.userRepository.updateRole(targetId, role))!;
     const { password: _password, ...safeUser } = user;
     return safeUser;
   }

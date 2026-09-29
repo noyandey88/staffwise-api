@@ -31,6 +31,25 @@ export class UserRepository {
     return await this.db.query.users.findFirst({ where: eq(users.id, id) });
   }
 
+  async existsWithRole(role: UserRole): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, role))
+      .limit(1);
+    return Boolean(row);
+  }
+
+  /** Inserts unless the email is taken (safe if two instances race); undefined when skipped. */
+  async createIfEmailFree(userData: NewUser): Promise<User | undefined> {
+    const [user] = await this.db
+      .insert(users)
+      .values(userData)
+      .onConflictDoNothing({ target: users.email })
+      .returning();
+    return user;
+  }
+
   async findAll() {
     return await this.db.select(publicColumns).from(users).orderBy(users.id);
   }

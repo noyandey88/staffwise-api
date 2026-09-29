@@ -88,9 +88,13 @@ export class AttendanceService {
     return employee;
   }
 
-  /** Admin/HR see anyone; managers see themselves and anyone below them. */
+  /** Super admin/Admin/HR see anyone; managers see themselves and anyone below them. */
   private async assertCanView(requester: JwtPayload, targetEmployeeId: number) {
-    if (requester.role === UserRole.Admin || requester.role === UserRole.Hr)
+    if (
+      requester.role === UserRole.SuperAdmin ||
+      requester.role === UserRole.Admin ||
+      requester.role === UserRole.Hr
+    )
       return;
 
     const me = await this.employeeService.findByUserId(requester.sub);

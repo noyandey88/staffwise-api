@@ -25,7 +25,7 @@ export class AuthService {
 
   async loginUser(loginDto: LoginDto) {
     const user = await this.userService.findUser(loginDto);
-    await this.userService.assertCanSignIn(user.id);
+    await this.userService.assertCanSignIn(user);
 
     // Cheap, bounded housekeeping: every login sheds this user's dead rows
     // so the table never accumulates unbounded revoked/expired tokens.
@@ -64,7 +64,7 @@ export class AuthService {
     const user = await this.userService.findUserById(stored.userId);
 
     try {
-      await this.userService.assertCanSignIn(user.id);
+      await this.userService.assertCanSignIn(user);
     } catch (err) {
       // Deactivated since this token was issued: end every session.
       await this.refreshTokenRepository.revokeAllForUser(user.id);
