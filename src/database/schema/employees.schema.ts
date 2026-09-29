@@ -8,14 +8,12 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './user.schema.js';
 import { departments } from './departments.schema.js';
+import { EmployeeStatus } from '../../employees/employees.enum.js';
 
-export const employeesEnum = pgEnum('employee_status', [
-  'active',
-  'on_leave',
-  'terminated',
-  'retired',
-  'resigned',
-]);
+export const employeesEnum = pgEnum(
+  'employee_status',
+  Object.values(EmployeeStatus) as [EmployeeStatus, ...EmployeeStatus[]],
+);
 
 export const employees = pgTable('employees', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -28,7 +26,7 @@ export const employees = pgTable('employees', {
     .notNull(),
   managerId: integer('manager_id').references((): any => employees.id),
   jobTitle: varchar('job_title', { length: 100 }).notNull(),
-  status: employeesEnum('status').default('active').notNull(),
+  status: employeesEnum('status').default(EmployeeStatus.Active).notNull(),
   hiredAt: date('hired_at').notNull(),
   createdAt: timestamp('created_at', {
     withTimezone: true,

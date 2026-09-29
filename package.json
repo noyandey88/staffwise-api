@@ -30,7 +30,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate:test": "drizzle-kit migrate",
-    "db:create:test": "node scripts/create-test-db.mjs"
+    "db:create:test": "node --env-file=.env scripts/create-test-db.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.0",

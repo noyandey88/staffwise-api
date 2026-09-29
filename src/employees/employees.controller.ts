@@ -12,6 +12,7 @@ import {
 import { EmployeesService } from './employees.service.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
+import { EmployeeResponseDto } from './dto/employee-response.dto.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
@@ -31,7 +32,9 @@ export class EmployeesController {
     summary: 'Create a new employee',
     description: 'Creates a new employee using the provided details.',
   })
-  @ApiEnvelope(null, { message: 'Employee created successfully' })
+  @ApiEnvelope(EmployeeResponseDto, {
+    message: 'Employee created successfully',
+  })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   async create(@Body() data: CreateEmployeeDto) {
     return await this.employeesService.create(data);
@@ -42,7 +45,7 @@ export class EmployeesController {
     summary: 'Retrieve all employees',
     description: 'Fetches a list of all available employees.',
   })
-  @ApiEnvelope(null, {
+  @ApiEnvelope(EmployeeResponseDto, {
     message: 'Employees retrieved successfully',
     isArray: true,
   })
@@ -55,7 +58,7 @@ export class EmployeesController {
     summary: 'Retrieve an employee by ID',
     description: 'Fetches an employee by their ID.',
   })
-  @ApiEnvelope(null, {
+  @ApiEnvelope(EmployeeResponseDto, {
     message: 'Employee retrieved successfully',
   })
   async findById(@Param('id', ParseIntPipe) id: number) {
@@ -68,10 +71,10 @@ export class EmployeesController {
     summary: 'Update an employee',
     description: 'Updates an employee using the provided details.',
   })
-  @ApiEnvelope(null, {
+  @ApiEnvelope(EmployeeResponseDto, {
     message: 'Employee updated successfully',
   })
-  async update(data: UpdateEmployeeDto) {
+  async update(@Body() data: UpdateEmployeeDto) {
     return await this.employeesService.update(data);
   }
 

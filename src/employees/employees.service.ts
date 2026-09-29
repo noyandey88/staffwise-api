@@ -49,8 +49,10 @@ export class EmployeesService {
   }
 
   async update(data: UpdateEmployeeDto) {
-    await this.findById(data.id);
-    return await this.employeesRepository.update(data.id, data);
+    // id is an identity column (GENERATED ALWAYS), so it must not be in the SET clause
+    const { id, ...changes } = data;
+    await this.findById(id);
+    return await this.employeesRepository.update(id, changes);
   }
 
   async delete(id: number) {

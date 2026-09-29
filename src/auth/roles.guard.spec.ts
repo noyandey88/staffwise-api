@@ -23,9 +23,11 @@ describe('RolesGuard', () => {
 
   it('passes when the route declares no roles', () => {
     expect(
-      makeGuard(undefined).canActivate(makeContext(UserRole.Student)),
+      makeGuard(undefined).canActivate(makeContext(UserRole.Employee)),
     ).toBe(true);
-    expect(makeGuard([]).canActivate(makeContext(UserRole.Student))).toBe(true);
+    expect(makeGuard([]).canActivate(makeContext(UserRole.Employee))).toBe(
+      true,
+    );
   });
 
   it('passes when the user holds a required role', () => {
@@ -36,7 +38,7 @@ describe('RolesGuard', () => {
 
   it('throws 403 when the user lacks the role', () => {
     expect(() =>
-      makeGuard([UserRole.Admin]).canActivate(makeContext(UserRole.Student)),
+      makeGuard([UserRole.Admin]).canActivate(makeContext(UserRole.Employee)),
     ).toThrow(ForbiddenException);
   });
 

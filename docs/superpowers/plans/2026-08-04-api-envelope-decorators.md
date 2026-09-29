@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **The wire format does not change.** Every response stays `{ success, status, message, payload }` with `status` as the HTTP status *name* string (e.g. `'OK'`). The e2e suite (`test/app.e2e-spec.ts`, 15 tests) must pass unchanged — do not edit it.
+- **The wire format does not change.** Every response stays `{ success, status, message, payload }` with `status` as the HTTP status _name_ string (e.g. `'OK'`). The e2e suite (`test/app.e2e-spec.ts`, 15 tests) must pass unchanged — do not edit it.
 - Package manager is **pnpm** (never npm/yarn).
 - Never use `console.log`; never log secrets or tokens.
 - Existing route paths, HTTP methods, and status codes are unchanged (all current success responses are 200).
@@ -53,6 +53,7 @@ CLAUDE.md, README.md                 (envelope/convention sections, Task 4)
 ### Task 1: Foundation — status util, error DTO, JWT payload type, composed decorators
 
 **Files:**
+
 - Create: `src/common/utils/http-status.util.ts`
 - Create: `src/common/utils/http-status.util.spec.ts`
 - Create: `src/common/dto/error-response.dto.ts`
@@ -65,6 +66,7 @@ CLAUDE.md, README.md                 (envelope/convention sections, Task 4)
 - Modify: `src/common/dto/api-response.dto.ts` (replace local `getHttpStatusName` with re-export from the util; keep `ResponseBuilder` compiling)
 
 **Interfaces:**
+
 - Consumes: `AuthGuard` from `src/auth/auth.guard` (existing).
 - Produces (later tasks rely on these exact names):
   - `getHttpStatusName(status: number | string): string` from `src/common/utils/http-status.util`
@@ -106,10 +108,7 @@ describe('getHttpStatusName', () => {
 
 ```typescript
 import { HttpStatus } from '@nestjs/common';
-import {
-  ApiEnvelope,
-  RESPONSE_MESSAGE_KEY,
-} from './api-envelope.decorator';
+import { ApiEnvelope, RESPONSE_MESSAGE_KEY } from './api-envelope.decorator';
 
 class DummyDto {}
 
@@ -313,9 +312,7 @@ import { getHttpStatusName } from '../utils/http-status.util';
  * Documents error responses with the exact shape AllExceptionsFilter
  * emits: { success: false, status, message, payload: null }.
  */
-export function ApiErrorResponses(
-  ...statuses: HttpStatus[]
-): MethodDecorator {
+export function ApiErrorResponses(...statuses: HttpStatus[]): MethodDecorator {
   return applyDecorators(
     ApiExtraModels(ErrorResponseDto),
     ...statuses.map((status) =>
@@ -395,11 +392,13 @@ git commit -m "feat: add envelope/auth/error-response composed decorators and st
 ### Task 2: Response DTOs for Swagger payload schemas
 
 **Files:**
+
 - Create: `src/user/dto/user-response.dto.ts`
 - Create: `src/course/dto/course-response.dto.ts`
 - Create: `src/auth/dto/auth-response.dto.ts`
 
 **Interfaces:**
+
 - Consumes: `UserRole` enum from `src/user/user.types`.
 - Produces (Task 3 imports these exact names): `UserResponseDto`, `CourseResponseDto`, `AccessTokenResponseDto`, `LoginResponseDto`.
 - These are documentation classes only — services keep returning Drizzle-derived types. Field lists mirror the actual runtime payloads: user = `users` table minus `password`; course = `courses` table; auth shapes = `AuthService.loginUser` / `issueAccessToken` returns.
@@ -426,7 +425,7 @@ export class UserResponseDto {
   @ApiProperty({ example: 'ada@example.com' })
   email!: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.Student })
+  @ApiProperty({ enum: UserRole, example: UserRole.Employee })
   role!: string;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
@@ -531,6 +530,7 @@ git commit -m "feat: add response DTOs for Swagger payload schemas"
 This task is atomic on purpose: the interceptor stops unwrapping pre-built envelopes in the same commit that stops controllers from building them. Do not split it.
 
 **Files:**
+
 - Modify: `src/common/interceptors/response.interceptor.ts` (rewrite)
 - Create: `src/common/interceptors/response.interceptor.spec.ts`
 - Modify: `src/common/filters/http-exception.filter.ts` (import path only)
@@ -541,6 +541,7 @@ This task is atomic on purpose: the interceptor stops unwrapping pre-built envel
 - Modify: `src/course/course.controller.ts` (rewrite)
 
 **Interfaces:**
+
 - Consumes: everything Tasks 1–2 produced (`ApiEnvelope`, `Auth`, `ApiErrorResponses`, `CurrentUser`, `RESPONSE_MESSAGE_KEY`, `getHttpStatusName`, the four response DTOs).
 - Produces: `ResponseInterceptor` with constructor `(reflector: Reflector = new Reflector())` — `main.ts`/e2e keep calling `new ResponseInterceptor()` unchanged.
 - `AllExceptionsFilter` behavior unchanged (import path only).
@@ -572,7 +573,10 @@ describe('ResponseInterceptor', () => {
   it('wraps the payload with status name from the response status code', async () => {
     const interceptor = new ResponseInterceptor(new Reflector());
     const result = await lastValueFrom(
-      interceptor.intercept(makeContext(200, () => {}), makeNext({ id: 1 })),
+      interceptor.intercept(
+        makeContext(200, () => {}),
+        makeNext({ id: 1 }),
+      ),
     );
     expect(result).toEqual({
       success: true,
@@ -584,7 +588,11 @@ describe('ResponseInterceptor', () => {
 
   it('uses the message from ApiEnvelope route metadata', async () => {
     const handler = () => {};
-    Reflect.defineMetadata(RESPONSE_MESSAGE_KEY, 'Course created successfully', handler);
+    Reflect.defineMetadata(
+      RESPONSE_MESSAGE_KEY,
+      'Course created successfully',
+      handler,
+    );
     const interceptor = new ResponseInterceptor(new Reflector());
     const result = await lastValueFrom(
       interceptor.intercept(makeContext(200, handler), makeNext({ id: 7 })),
@@ -595,7 +603,10 @@ describe('ResponseInterceptor', () => {
   it('passes null payloads through as null', async () => {
     const interceptor = new ResponseInterceptor(new Reflector());
     const result = await lastValueFrom(
-      interceptor.intercept(makeContext(200, () => {}), makeNext(null)),
+      interceptor.intercept(
+        makeContext(200, () => {}),
+        makeNext(null),
+      ),
     );
     expect(result.payload).toBeNull();
   });
@@ -603,7 +614,10 @@ describe('ResponseInterceptor', () => {
   it('converts undefined payloads to null', async () => {
     const interceptor = new ResponseInterceptor(new Reflector());
     const result = await lastValueFrom(
-      interceptor.intercept(makeContext(200, () => {}), makeNext(undefined)),
+      interceptor.intercept(
+        makeContext(200, () => {}),
+        makeNext(undefined),
+      ),
     );
     expect(result.payload).toBeNull();
   });
@@ -611,7 +625,10 @@ describe('ResponseInterceptor', () => {
   it('works when constructed with no arguments (main.ts call form)', async () => {
     const interceptor = new ResponseInterceptor();
     const result = await lastValueFrom(
-      interceptor.intercept(makeContext(200, () => {}), makeNext('Hello World!')),
+      interceptor.intercept(
+        makeContext(200, () => {}),
+        makeNext('Hello World!'),
+      ),
     );
     expect(result).toEqual({
       success: true,
@@ -1048,10 +1065,12 @@ git commit -m "refactor: interceptor-owned envelope, composed decorators, delete
 ### Task 4: Docs + live Swagger verification
 
 **Files:**
+
 - Modify: `CLAUDE.md` (Response envelope section, ~line 60)
 - Modify: `README.md` (adding-a-resource conventions, ~line 61)
 
 **Interfaces:**
+
 - Consumes: the decorator names from Task 1 (documentation only).
 
 - [ ] **Step 1: Live Swagger verification**
@@ -1088,6 +1107,7 @@ Replace the "Response envelope (cross-cutting)" paragraph body with:
 `main.ts` wires three global pieces: a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, and `AllExceptionsFilter`. Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
 
 Per-route contract lives in composed decorators (`src/common/decorators/`):
+
 - `@ApiEnvelope(PayloadDto, { message })` — sets the HTTP code (default 200), the envelope message, and the Swagger success schema (envelope + payload DTO). Use `null` for null payloads, `isArray: true` for lists.
 - `@Auth()` — `AuthGuard` + Swagger bearer (`access-token`) + documented 401. Class-level when every route is protected.
 - `@ApiErrorResponses(HttpStatus.X, ...)` — documents error codes with the `ErrorResponseDto` shape emitted by `AllExceptionsFilter`.
