@@ -23,7 +23,7 @@ import { UserRole } from '../user/user.types.js';
 import type { JwtPayload } from '../auth/auth.types.js';
 
 @Auth()
-@ApiTags('Attednace')
+@ApiTags('Attendances')
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}

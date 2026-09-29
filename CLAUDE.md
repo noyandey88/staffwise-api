@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-NestJS 12 LMS API ("nestjs-lms") using Drizzle ORM on PostgreSQL, JWT auth with refresh tokens, and Swagger docs served at `/api`. Package manager is **pnpm**. Requires Node 24.9+ (pinned in .nvmrc, package.json engines, CI, and the Dockerfile); the project is native ESM.
+Staffwise — a NestJS 12 HR API (employees, departments, attendance) built on an in-house starter template (the package name is still `nestjs-lms`, and `README.md` still describes the starter and its since-removed `course` demo module). Uses Drizzle ORM on PostgreSQL, JWT auth with refresh tokens, and Swagger docs served at `/api`. Package manager is **pnpm**. Requires Node 24.9+ (pinned in .nvmrc, package.json engines, CI, and the Dockerfile); the project is native ESM.
 
 ## Commands
 
@@ -13,10 +13,11 @@ pnpm start:dev          # run with watch mode (default port 3000, override with 
 pnpm build              # nest build
 pnpm lint               # eslint with --fix (prettier runs as a lint rule)
 pnpm lint:check         # CI gate: eslint without --fix, --max-warnings=0
+pnpm typecheck          # tsc --noEmit
 pnpm format             # prettier on src/ and test/
 
 pnpm test               # run all unit tests with vitest (*.spec.ts under src/)
-pnpm test -- course.service   # run a single test file (vitest filename filter)
+pnpm test -- auth.service     # run a single test file (vitest filename filter)
 pnpm test:watch
 
 pnpm db:generate        # generate a Drizzle migration from schema changes
@@ -40,7 +41,7 @@ override values from that file. Token lifetimes are in **seconds**.
 
 ## Architecture
 
-Standard NestJS module-per-feature layout (`auth`, `user`, `course`, `health`), each following **controller → service → repository**. Repositories are the only layer that touches the database.
+Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `department`, `attendance`, `health`), each following **controller → service → repository**. Repositories are the only layer that touches the database.
 
 ### Database (Drizzle)
 
@@ -48,13 +49,22 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `course`, `health`), 
 - `DatabaseLifecycle` (`src/database/database.provider.ts`) implements `OnApplicationShutdown` and calls `pool.end()` on shutdown; `createApp()` calls `app.enableShutdownHooks()` so the pool closes cleanly on SIGTERM/SIGINT. The pool is bounded by `DB_POOL_MAX`, `DB_CONNECT_TIMEOUT_MS` and `DB_STATEMENT_TIMEOUT_MS` (defaults in `env.validation.ts`).
 - Table definitions live in `src/database/schema/*.schema.ts` and must be re-exported from `src/database/schema/index.ts` — both the Drizzle query API (`db.query.<table>`) and drizzle-kit discover tables through that barrel/glob.
 - Migrations are generated into `drizzle/migrations/`. Workflow for a schema change: edit schema file → `pnpm db:generate` → `pnpm db:migrate`.
-- Row types are derived per-repository with `InferSelectModel` / `InferInsertModel` rather than shared entity classes.
+- Row types: the HR schema files export `$inferSelect`/`$inferInsert` types next to the table (`Employee`, `NewDepartment`, …); older code derives them per-repository with `InferSelectModel`. No shared entity classes.
+- Non-trivial queries are raw SQL via `db.execute(sql\`...\`)` returning `result.rows` (recursive CTE for the reporting chain, window-function monthly summary). Those rows are not typed by Drizzle and use snake_case unless aliased.
 
 ### Auth
 
 - `AuthModule` registers `JwtModule` as **global** via `registerAsync`, reading `JWT_SECRET` and `JWT_ACCESS_EXPIRES_IN` (seconds) from `ConfigService`; refresh tokens are persisted via `auth/refresh-token.repository.ts` (`refresh_tokens` table, SHA-256 digest of the raw token, unique-indexed) and their lifetime is `JWT_REFRESH_EXPIRES_IN` (seconds). `POST /auth/access-token/refresh` is public: it redeems a refresh token for a new access/refresh pair, revokes the presented one, and treats a second presentation as reuse (revokes every token for that user). Login sheds the user's revoked/expired rows.
 - Protect routes with `@Auth()` (`src/common/decorators/auth.decorator.ts`), which bundles `AuthGuard` + `RolesGuard`, the `access-token` Swagger bearer scheme, and the documented 401; the guard puts the JWT payload on `request.user`, accessed via `@CurrentUser()`. Restrict by role with `@Roles(UserRole.Admin)` (`roles.decorator.ts`), which `RolesGuard` enforces and which documents the 403.
 - Login answers unknown email and wrong password with the same 401. Register enforces password length 8–72 and normalizes email (trim + lower-case) on both register and login.
+
+### HR domain
+
+- Roles (`UserRole` in `src/user/user.types.ts`, also the `user_role` pg enum): `admin`, `hr`, `manager`, `employee` (default on register). Admin/HR manage employees and departments.
+- `employees` is 1:1 with `users` (`user_id` unique) and belongs to a department; `manager_id` self-references to form the org tree. `EmployeesRepository.findReports` walks it recursively, so a manager's "reports" include indirect reports.
+- Endpoints act on the caller via the JWT `sub` (a **user** id), resolved to an employee with `EmployeesService.findByUserId` (404 if the user has no employee record). Path params like `/attendance/employee/:id` are **employee** ids.
+- Attendance: one `attendance_records` row per employee per `work_date` (unique constraint; check-in uses `onConflictDoNothing` and maps an empty return to 409). `work_date` is a `YYYY-MM-DD` string computed in `ATTENDANCE_TIMEZONE` (`Asia/Dhaka`) by `attendance.util.ts`; month filters are half-open ranges from `monthRange()`. Lateness (`LATE_AFTER`), worked and overtime minutes (`STANDARD_WORK_MINUTES`) are computed in SQL at read time, not stored.
+- Attendance visibility: Admin/HR see anyone; managers see themselves plus their (recursive) reports — enforced in `AttendanceService.assertCanView`, not by `@Roles` alone.
 
 ### Observability (`@nestjs/observe`)
 
@@ -84,3 +94,5 @@ Do not add `@ApiBody` (inferred from `@Body()` types) or per-route `@HttpCode`/`
 
 - The project is native ESM (`"type": "module"`, `module: nodenext`). Every relative import must carry an explicit `.js` extension (`./foo.js`, `../bar/index.js`), even though the source is `.ts`; tsc rejects extensionless imports. There is no `src/*` alias.
 - Swagger: tag controllers with `@ApiTags`, document endpoints with `@ApiOperation`.
+- Design specs/plans for past infrastructure changes live in `docs/superpowers/{specs,plans}/`.
+- `.github/workflows/ci.yml` is currently fully commented out; run `lint:check`, `typecheck`, `test`, `build` locally as the gate.
