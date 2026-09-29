@@ -38,6 +38,16 @@ export class EmployeesService {
     return employee;
   }
 
+  async findByUserId(userId: number) {
+    const employee = await this.employeesRepository.findByUserId(userId);
+
+    if (!employee) {
+      throw new NotFoundException(`Employee with userId ${userId} not found`);
+    }
+
+    return employee;
+  }
+
   async update(data: UpdateEmployeeDto) {
     await this.findById(data.id);
     return await this.employeesRepository.update(data.id, data);
@@ -46,5 +56,10 @@ export class EmployeesService {
   async delete(id: number) {
     await this.findById(id);
     await this.employeesRepository.remove(id);
+  }
+
+  async findReports(id: number) {
+    await this.findById(id); // 404 if the manager doesn't exist
+    return this.employeesRepository.findReports(id);
   }
 }
