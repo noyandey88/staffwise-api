@@ -14,23 +14,17 @@ pnpm build              # nest build
 pnpm lint               # eslint with --fix (prettier runs as a lint rule)
 pnpm lint:check         # CI gate: eslint without --fix, --max-warnings=0
 pnpm typecheck          # tsc --noEmit
-pnpm format             # prettier on src/ and test/
-
-pnpm test               # run all unit tests with vitest (*.spec.ts under src/)
-pnpm test -- auth.service     # run a single test file (vitest filename filter)
-pnpm test:watch
+pnpm format             # prettier on src/
 
 pnpm db:generate        # generate a Drizzle migration from schema changes
 pnpm db:migrate         # apply migrations
 pnpm db:push            # push schema directly (no migration file)
 pnpm db:studio          # Drizzle Studio UI
 
-pnpm db:create:test     # create the database named by .env; runs scripts/create-test-db.mjs
-pnpm db:migrate:test    # apply migrations using the root .env
-pnpm test:e2e           # e2e tests (vitest.config.e2e.ts) — requires:
-                        #   docker compose up -d postgres
-                        #   pnpm db:create:test && pnpm db:migrate:test
+docker compose up -d postgres   # local DB; credentials/db name from POSTGRES_* in .env (must match DATABASE_URL)
 ```
+
+There are no automated tests (removed deliberately); verify changes with `pnpm typecheck`, `pnpm lint:check` and `pnpm build`.
 
 Config is zod-validated at boot (`src/config/env.validation.ts`,
 `validateEnv`) — `DATABASE_URL`, `JWT_SECRET`, `THROTTLE_TTL`, and
@@ -60,10 +54,11 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 ### HR domain
 
-- Roles (`UserRole` in `src/user/user.types.ts`, also the `user_role` pg enum): `admin`, `hr`, `manager`, `employee` (default on register). Admin/HR manage employees and departments.
+- Roles (`UserRole` in `src/user/user.types.ts`, which also drives the `user_role` pg enum): `admin`, `hr`, `manager`, `employee` (default on register). Admin/HR manage employees and departments. Only admins change roles (`PATCH /users/:id/role`, never their own); the first admin comes from `pnpm admin:create` (`scripts/create-admin.mjs`, raw SQL + bcrypt, not the Nest app). The role lives in the JWT, so a change takes effect on the user's next login/refresh.
 - `employees` is 1:1 with `users` (`user_id` unique) and belongs to a department; `manager_id` self-references to form the org tree. `EmployeesRepository.findReports` walks it recursively, so a manager's "reports" include indirect reports.
 - Endpoints act on the caller via the JWT `sub` (a **user** id), resolved to an employee with `EmployeesService.findByUserId` (404 if the user has no employee record). Path params like `/attendance/employee/:id` are **employee** ids.
 - Attendance: one `attendance_records` row per employee per `work_date` (unique constraint; check-in uses `onConflictDoNothing` and maps an empty return to 409). `work_date` is a `YYYY-MM-DD` string computed in `ATTENDANCE_TIMEZONE` (`Asia/Dhaka`) by `attendance.util.ts`; month filters are half-open ranges from `monthRange()`. Lateness (`LATE_AFTER`), worked and overtime minutes (`STANDARD_WORK_MINUTES`) are computed in SQL at read time, not stored.
+- Accounts: `POST /auth/register` is admin/HR-only (no public signup); `PATCH /auth/password` revokes all refresh tokens. `UserService.assertCanSignIn` blocks login/refresh for `SIGN_IN_BLOCKED_STATUSES` (terminated/resigned/retired, in `employees.enum.ts`); a blocked refresh revokes all the user's tokens. Only `active` employees check in/out. `GET /users/me` joins the employee + department (`UserRepository.findProfile`).
 - Attendance visibility: Admin/HR see anyone; managers see themselves plus their (recursive) reports — enforced in `AttendanceService.assertCanView`, not by `@Roles` alone.
 
 ### Observability (`@nestjs/observe`)
@@ -78,7 +73,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 ### Response envelope (cross-cutting)
 
-`createApp()` in `src/bootstrap.ts` builds the whole app — observe instrumentation, pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens; the e2e suite calls it and `init()`s, so tests run the production bootstrap. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
+`createApp()` in `src/bootstrap.ts` builds the whole app — observe instrumentation, pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
 
 Per-route contract lives in composed decorators (`src/common/decorators/`):
 
@@ -95,4 +90,4 @@ Do not add `@ApiBody` (inferred from `@Body()` types) or per-route `@HttpCode`/`
 - The project is native ESM (`"type": "module"`, `module: nodenext`). Every relative import must carry an explicit `.js` extension (`./foo.js`, `../bar/index.js`), even though the source is `.ts`; tsc rejects extensionless imports. There is no `src/*` alias.
 - Swagger: tag controllers with `@ApiTags`, document endpoints with `@ApiOperation`.
 - Design specs/plans for past infrastructure changes live in `docs/superpowers/{specs,plans}/`.
-- `.github/workflows/ci.yml` is currently fully commented out; run `lint:check`, `typecheck`, `test`, `build` locally as the gate.
+- `.github/workflows/ci.yml` is currently fully commented out; run `lint:check`, `typecheck`, `build` locally as the gate.
