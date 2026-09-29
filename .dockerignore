@@ -6,5 +6,4 @@ coverage
 !.env.example
 *.md
 docs
-test
 drizzle/**/meta
