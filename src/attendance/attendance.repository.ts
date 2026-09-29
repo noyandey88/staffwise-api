@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schema/index.js';
@@ -10,6 +10,7 @@ import {
   STANDARD_WORK_MINUTES,
 } from './attendance.constants.js';
 
+@Injectable()
 export class AttendanceRepository {
   constructor(
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,

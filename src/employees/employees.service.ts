@@ -25,7 +25,7 @@ export class EmployeesService {
   }
 
   async findAll() {
-    await this.employeesRepository.findAll();
+    return await this.employeesRepository.findAll();
   }
 
   async findById(id: number) {

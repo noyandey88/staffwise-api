@@ -28,8 +28,8 @@ export class EmployeesController {
   @Post('/create')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
-    summary: 'Create a new course',
-    description: 'Creates a new course using the provided details.',
+    summary: 'Create a new employee',
+    description: 'Creates a new employee using the provided details.',
   })
   @ApiEnvelope(null, { message: 'Employee created successfully' })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
@@ -39,8 +39,8 @@ export class EmployeesController {
 
   @Get('/get/all')
   @ApiOperation({
-    summary: 'Retrieve all courses',
-    description: 'Fetches a list of all available courses.',
+    summary: 'Retrieve all employees',
+    description: 'Fetches a list of all available employees.',
   })
   @ApiEnvelope(null, {
     message: 'Employees retrieved successfully',

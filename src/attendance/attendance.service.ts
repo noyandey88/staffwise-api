@@ -62,7 +62,7 @@ export class AttendanceService {
   ) {
     await this.assertCanView(requester, employeeId);
     const { start, end } = monthRange(month);
-    await this.attendanceRepository.findByEmployeeAndMonth(
+    return await this.attendanceRepository.findByEmployeeAndMonth(
       employeeId,
       start,
       end,
