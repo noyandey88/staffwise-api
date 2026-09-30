@@ -6,6 +6,16 @@ import { employees } from '../database/schema/employees.schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
 
+export interface ReportRow {
+  id: number;
+  userId: number;
+  managerId: number | null;
+  departmentId: number;
+  jobTitle: string;
+  depth: number;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class EmployeesRepository {
   constructor(
@@ -48,17 +58,29 @@ export class EmployeesRepository {
     await this.db.delete(employees).where(eq(employees.id, id));
   }
 
-  async findReports(managerId: number) {
-    const result = await this.db.execute(sql`
+  async findReports(managerId: number): Promise<ReportRow[]> {
+    const result = await this.db.execute<ReportRow>(sql`
       WITH RECURSIVE reports AS (
-        SELECT id, user_id, manager_id, department_id, job_title, 1 AS depth
-        FROM employees
-        WHERE manager_id = ${managerId}
+        SELECT
+          ${employees.id},
+          ${employees.userId} AS "userId",
+          ${employees.managerId} AS "managerId",
+          ${employees.departmentId} AS "departmentId",
+          ${employees.jobTitle} AS "jobTitle",
+          1 AS depth
+        FROM ${employees}
+        WHERE ${employees.managerId} = ${managerId}
 
         UNION ALL
 
-        SELECT e.id, e.user_id, e.manager_id, e.department_id, e.job_title, r.depth + 1
-        FROM employees e
+        SELECT
+          e.id,
+          e.user_id AS "userId",
+          e.manager_id AS "managerId",
+          e.department_id AS "departmentId",
+          e.job_title AS "jobTitle",
+          r.depth + 1
+        FROM ${employees} e
         JOIN reports r ON e.manager_id = r.id
       )
       SELECT * FROM reports ORDER BY depth, id

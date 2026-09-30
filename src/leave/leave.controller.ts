@@ -1,34 +1,107 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  HttpStatus,
+  Patch,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { LeaveService } from './leave.service.js';
-import { CreateLeaveDto } from './dto/create-leave.dto.js';
-import { UpdateLeaveDto } from './dto/update-leave.dto.js';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
+import { LeaveRequestResponseDto } from './dto/leave-request-response.dto.js';
+import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
+import { CreateLeaveRequestDto } from './dto/create-leave.dto.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { LeaveBalanceResponseDto } from './dto/leave-balance-response.dto.js';
+import { type JwtPayload } from '../auth/auth.types.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
+import { UserRole } from '../user/user.types.js';
 
+@ApiTags('Leave')
 @Controller('leave')
 export class LeaveController {
   constructor(private readonly leaveService: LeaveService) {}
 
-  @Post()
-  create(@Body() createLeaveDto: CreateLeaveDto) {
-    return this.leaveService.create(createLeaveDto);
+  @Post('/request')
+  @ApiOperation({ summary: 'Submit a leave request' })
+  @ApiEnvelope(LeaveRequestResponseDto, {
+    message: 'Leave request submitted',
+    status: HttpStatus.CREATED,
+  })
+  @ApiErrorResponses(HttpStatus.CONFLICT)
+  async create(
+    @CurrentUser('sub') userId: number,
+    @Body() createLeaveDto: CreateLeaveRequestDto,
+  ) {
+    return await this.leaveService.create(userId, createLeaveDto);
   }
 
-  @Get()
-  findAll() {
-    return this.leaveService.findAll();
+  @Get('/me')
+  @ApiOperation({ summary: 'My leave requests' })
+  @ApiEnvelope(LeaveRequestResponseDto, {
+    message: 'Leave requests retrieved successfully',
+    isArray: true,
+  })
+  async findMine(@CurrentUser('sub') userId: number) {
+    return await this.leaveService.findMine(userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.leaveService.findOne(+id);
+  @Get('/balances/me')
+  @ApiOperation({ summary: 'My leave balances for a year' })
+  @ApiEnvelope(LeaveBalanceResponseDto, {
+    message: 'Balances retrieved successfully',
+    isArray: true,
+  })
+  async myBalances(@CurrentUser('sub') userId: number) {
+    return await this.leaveService.myBalances(userId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLeaveDto: UpdateLeaveDto) {
-    return this.leaveService.update(+id, updateLeaveDto);
+  @Get('/pending')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: 'Pending leave requests',
+    description: 'Admin/HR: everyone. Manager: only their reports.',
+  })
+  @ApiEnvelope(LeaveRequestResponseDto, {
+    message: 'Pending requests retrieved successfully',
+    isArray: true,
+  })
+  async findPending(@CurrentUser() user: JwtPayload) {
+    return await this.leaveService.findPending(user);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.leaveService.remove(+id);
+  @Patch('/:id/approve')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({ summary: 'Approve a leave request' })
+  @ApiEnvelope(LeaveRequestResponseDto, { message: 'Leave request approved' })
+  @ApiErrorResponses(
+    HttpStatus.CONFLICT,
+    HttpStatus.FORBIDDEN,
+    HttpStatus.NOT_FOUND,
+  )
+  async approve(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return await this.leaveService.approve(user, id);
+  }
+
+  @Patch('/:id/reject')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({ summary: 'Reject a leave request' })
+  @ApiEnvelope(LeaveRequestResponseDto, { message: 'Leave request rejected' })
+  @ApiErrorResponses(
+    HttpStatus.CONFLICT,
+    HttpStatus.FORBIDDEN,
+    HttpStatus.NOT_FOUND,
+  )
+  async reject(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return await this.leaveService.reject(user, id);
   }
 }

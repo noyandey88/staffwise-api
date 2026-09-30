@@ -66,6 +66,15 @@ export class LeaveRepository {
     });
   }
 
+  async findPendingForEmployees(employeeIds: number[]) {
+    if (employeeIds.length === 0) return [];
+    return this.db.query.leaveRequests.findMany({
+      where: (t, { and, eq, inArray }) =>
+        and(eq(t.status, 'pending'), inArray(t.employeeId, employeeIds)),
+      orderBy: (t, { asc }) => asc(t.createdAt),
+    });
+  }
+
   async balanceForEmployee(employeeId: number, year: number) {
     return await this.db
       .select({
