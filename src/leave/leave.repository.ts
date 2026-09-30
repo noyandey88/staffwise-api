@@ -38,8 +38,13 @@ export class LeaveRepository {
         .returning();
 
       return request;
-    } catch (err: any) {
-      if (err?.code === EXCLUSION_VIOLATION) {
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        err.code === EXCLUSION_VIOLATION
+      ) {
         throw new ConflictException(
           'This overlaps an existing pending or approved leave request',
         );
