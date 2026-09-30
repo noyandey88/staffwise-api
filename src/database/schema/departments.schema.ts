@@ -1,15 +1,10 @@
-import { integer, pgTable, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { integer, pgTable, varchar } from 'drizzle-orm/pg-core';
+import { timestamps } from './common.schema.js';
 
 export const departments = pgTable('departments', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar('name', { length: 100 }).notNull().unique(),
-  createdAt: timestamp('created_at', {
-    withTimezone: true,
-    mode: 'date',
-  }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date()),
+  ...timestamps,
 });
 
 export type NewDepartment = typeof departments.$inferInsert;

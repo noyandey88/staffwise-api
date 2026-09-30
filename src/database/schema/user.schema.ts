@@ -1,11 +1,6 @@
-import {
-  integer,
-  pgEnum,
-  pgTable,
-  timestamp,
-  varchar,
-} from 'drizzle-orm/pg-core';
+import { integer, pgEnum, pgTable, varchar } from 'drizzle-orm/pg-core';
 import { UserRole } from '../../user/user.types.js';
+import { timestamps } from './common.schema.js';
 
 export const userRoleEnum = pgEnum(
   'user_role',
@@ -19,13 +14,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 100 }).unique().notNull(),
   password: varchar('password', { length: 255 }).notNull(),
   role: userRoleEnum('role').notNull().default(UserRole.Employee),
-  createdAt: timestamp('created_at', {
-    withTimezone: true,
-    mode: 'date',
-  }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date()),
+  ...timestamps,
 });
 
 export type User = typeof users.$inferSelect;

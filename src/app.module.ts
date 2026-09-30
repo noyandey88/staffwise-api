@@ -15,6 +15,7 @@ import { Pool } from 'pg';
 import { EmployeesModule } from './employees/employees.module.js';
 import { DepartmentModule } from './department/department.module.js';
 import { AttendanceModule } from './attendance/attendance.module.js';
+import { LeaveModule } from './leave/leave.module.js';
 
 // Loads the env-file cascade into process.env synchronously, so the
 // observe decision below can read the validated keys before the
@@ -74,6 +75,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule({
     EmployeesModule,
     DepartmentModule,
     AttendanceModule,
+    LeaveModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

@@ -1,14 +1,8 @@
-import {
-  date,
-  integer,
-  pgEnum,
-  pgTable,
-  timestamp,
-  varchar,
-} from 'drizzle-orm/pg-core';
+import { date, integer, pgEnum, pgTable, varchar } from 'drizzle-orm/pg-core';
 import { users } from './user.schema.js';
 import { departments } from './departments.schema.js';
 import { EmployeeStatus } from '../../employees/employees.enum.js';
+import { timestamps } from './common.schema.js';
 
 export const employeesEnum = pgEnum(
   'employee_status',
@@ -28,13 +22,7 @@ export const employees = pgTable('employees', {
   jobTitle: varchar('job_title', { length: 100 }).notNull(),
   status: employeesEnum('status').default(EmployeeStatus.Active).notNull(),
   hiredAt: date('hired_at').notNull(),
-  createdAt: timestamp('created_at', {
-    withTimezone: true,
-    mode: 'date',
-  }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date()),
+  ...timestamps,
 });
 
 export type NewEmployee = typeof employees.$inferInsert;

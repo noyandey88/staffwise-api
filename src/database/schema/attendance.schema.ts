@@ -7,6 +7,7 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 import { employees } from './employees.schema.js';
+import { timestamps } from './common.schema.js';
 
 export const attendanceRecords = pgTable(
   'attendance_records',
@@ -24,13 +25,7 @@ export const attendanceRecords = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
-    createdAt: timestamp('created_at', {
-      withTimezone: true,
-      mode: 'date',
-    }).defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    ...timestamps,
   },
   (t) => [
     unique('attendance_employee_date_uq').on(t.employeeId, t.workDate),
