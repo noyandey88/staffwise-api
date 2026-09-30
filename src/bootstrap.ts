@@ -4,29 +4,21 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import { AppModule, ObserveInstrument, observeEnabled } from './app.module.js';
+import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
 import { DebugPayloadInterceptor } from './common/interceptors/debug-payload.interceptor.js';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor.js';
 
 /**
- * Builds the fully configured application: instrumentation, logger,
- * security middleware, CORS, validation, envelope, error filter, and
- * Swagger. `main.ts` calls this and then listens; the e2e suite calls
- * it and then `init()`s, so tests exercise the same bootstrap as
- * production instead of a hand-assembled subset.
+ * Builds the fully configured application: logger, security middleware,
+ * CORS, validation, envelope, error filter, and Swagger. `main.ts` calls
+ * this and then listens. Add global wiring here, not in `main.ts`.
  */
 export async function createApp(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-    instrument: observeEnabled ? ObserveInstrument : undefined,
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const logger = app.get(Logger);
   app.useLogger(logger);
   app.enableShutdownHooks();
-  if (!observeEnabled) {
-    logger.log('Observe disabled (OBSERVE_APP_KEY/OBSERVE_APP_SECRET unset)');
-  }
 
   app.use(helmet());
 

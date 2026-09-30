@@ -61,10 +61,6 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - Accounts: `POST /auth/register` is admin/HR-only (no public signup); `PATCH /auth/password` revokes all refresh tokens. `UserService.assertCanSignIn` blocks login/refresh for `SIGN_IN_BLOCKED_STATUSES` (terminated/resigned/retired, in `employees.enum.ts`); a blocked refresh revokes all the user's tokens. Only `active` employees check in/out. `GET /users/me` joins the employee + department (`UserRepository.findProfile`).
 - Attendance visibility: Admin/HR see anyone; managers see themselves plus their (recursive) reports — enforced in `AttendanceService.assertCanView`, not by `@Roles` alone.
 
-### Observability (`@nestjs/observe`)
-
-`createObserveModule` in `app.module.ts` is configured with `skipInstrumentation` for `pg.Pool` — observe proxies every function-valued property of every provider, and pg-pool calls `new this.Promise(...)`, so instrumenting the pool breaks every query. `ObserveModule` and the `instrument` option are only enabled when both `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` are set (`observeEnabled`).
-
 ### Health, rate limiting, logging
 
 - `HealthModule` (`src/health/`) exposes `GET /health` via `@nestjs/terminus`, checking `DrizzleHealthIndicator` (runs `SELECT 1` through the injected `DRIZZLE_ORM` instance).
@@ -73,7 +69,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 ### Response envelope (cross-cutting)
 
-`createApp()` in `src/bootstrap.ts` builds the whole app — observe instrumentation, pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
+`createApp()` in `src/bootstrap.ts` builds the whole app — pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
 
 Per-route contract lives in composed decorators (`src/common/decorators/`):
 
@@ -91,3 +87,4 @@ Do not add `@ApiBody` (inferred from `@Body()` types) or per-route `@HttpCode`/`
 - Swagger: tag controllers with `@ApiTags`, document endpoints with `@ApiOperation`.
 - Design specs/plans for past infrastructure changes live in `docs/superpowers/{specs,plans}/`.
 - `.github/workflows/ci.yml` is currently fully commented out; run `lint:check`, `typecheck`, `build` locally as the gate.
+- Dependency pins that look outdated on purpose: `typescript` stays on 6.x until typescript-eslint supports 7 (its peer range is `<6.1.0`), `@types/node` tracks the runtime major (24), and `drizzle-orm` is pinned exactly. `pnpm.onlyBuiltDependencies` allows only `bcrypt` (ships glibc/musl prebuilds; the script just selects one) and `esbuild` (its postinstall validates the platform binary) to run install scripts; `@scarf/scarf` (download telemetry pulled in by swagger-ui-dist) is deliberately ignored. The Dockerfile installs pnpm explicitly (`PNPM_VERSION` build arg) instead of Corepack, which newer Node releases no longer bundle; keep it in sync with `packageManager`.

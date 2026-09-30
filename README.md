@@ -85,7 +85,6 @@ Attendance dates use the `Asia/Dhaka` timezone. The workday starts at 09:00 with
 | `JWT_ACCESS_EXPIRES_IN`                     | no       | `300`                              | Access-token lifetime (seconds)                                                         |
 | `JWT_REFRESH_EXPIRES_IN`                    | no       | `604800`                           | Refresh-token lifetime (seconds)                                                        |
 | `CORS_ORIGINS`                              | no       | _(empty)_                          | Comma-separated allowed origins; empty disables CORS                                    |
-| `OBSERVE_APP_KEY` / `OBSERVE_APP_SECRET`    | no       | _(unset)_                          | `@nestjs/observe` credentials; telemetry and instrumentation run only when both are set |
 | `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | no (both or neither) | _(unset)_          | Super admin created on startup if none exists; password 8–72 characters, used only at creation |
 
 The root `.env` is the single source of truth for local development, tests, Drizzle commands and Docker Compose. Process variables injected by the shell or deployment platform override values in `.env`.
