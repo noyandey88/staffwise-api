@@ -19,7 +19,9 @@ import { LeaveBalanceResponseDto } from './dto/leave-balance-response.dto.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { UserRole } from '../user/user.types.js';
+import { Auth } from '../common/decorators/auth.decorator.js';
 
+@Auth()
 @ApiTags('Leave')
 @Controller('leave')
 export class LeaveController {

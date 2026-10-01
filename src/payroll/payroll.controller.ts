@@ -10,7 +10,12 @@ import {
 } from '@nestjs/common';
 import { PayrollService } from './payroll.service.js';
 import { GenerateRunDto } from './dto/create-payroll.dto.js';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiProduces,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { UserRole } from '../user/user.types.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
@@ -19,7 +24,9 @@ import { PayrollRunResponseDto } from './dto/payroll-run-response.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { PayslipResponseDto } from './dto/payslip-response.dto.js';
+import { Auth } from '../common/decorators/auth.decorator.js';
 
+@Auth()
 @ApiTags('Payroll')
 @Controller('payroll')
 export class PayrollController {
@@ -41,7 +48,7 @@ export class PayrollController {
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Approve a draft payroll run' })
   @ApiEnvelope(PayrollRunResponseDto, { message: 'Payroll run approved' })
-  @ApiErrorResponses(HttpStatus.CONFLICT)
+  @ApiErrorResponses(HttpStatus.NOT_FOUND, HttpStatus.CONFLICT)
   async approve(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseIntPipe) id: number,
@@ -58,6 +65,21 @@ export class PayrollController {
     return this.payrollService.markPaid(id);
   }
 
+  @Get('/runs/:id/bank-file')
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @ApiOperation({
+    summary: 'Download the bank transfer file (CSV) for an approved run',
+  })
+  @ApiProduces('text/csv')
+  @ApiOkResponse({
+    description: 'CSV attachment (not wrapped in the response envelope)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND, HttpStatus.CONFLICT)
+  bankFile(@Param('id', ParseIntPipe) id: number) {
+    return this.payrollService.bankFile(id);
+  }
+
   @Get('/runs/:id/payslips')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Payslips for a payroll run' })
@@ -65,6 +87,7 @@ export class PayrollController {
     message: 'Payslips retrieved successfully',
     isArray: true,
   })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
   async payslipsForRun(@Param('id', ParseIntPipe) id: number) {
     return this.payrollService.payslipsForRun(id);
   }

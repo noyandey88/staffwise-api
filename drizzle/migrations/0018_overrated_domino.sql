@@ -1,0 +1,2 @@
+ALTER TABLE "salary_structures" DROP CONSTRAINT "salary_structures_employee_id_unique";--> statement-breakpoint
+ALTER TABLE "salary_structures" ADD CONSTRAINT "salary_structures_employee_effective_uq" UNIQUE("employee_id","effective_from");

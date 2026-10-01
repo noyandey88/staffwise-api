@@ -47,6 +47,7 @@ export class DepartmentRepository {
     const [department] = await this.db
       .update(departments)
       .set(data)
+      .where(eq(departments.id, id))
       .returning();
 
     return department;
