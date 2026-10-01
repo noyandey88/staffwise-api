@@ -113,6 +113,13 @@
       "when": 1790734083786,
       "tag": "0015_nasty_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790821983865,
+      "tag": "0016_next_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }
