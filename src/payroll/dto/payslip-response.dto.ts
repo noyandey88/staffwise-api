@@ -28,6 +28,25 @@ export class PayslipResponseDto {
   @ApiProperty({ example: 1 })
   unpaidLeaveDays!: number;
 
+  @ApiProperty({
+    nullable: true,
+    type: String,
+    description: 'Salary account snapshot, set when the run is approved',
+  })
+  bankAccountHolderName!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  bankName!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  bankBranchName!: string | null;
+
+  @ApiProperty({ nullable: true, type: String, example: '*********2345' })
+  bankAccountNumber!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  bankRoutingNumber!: string | null;
+
   @ApiProperty()
   createdAt!: Date;
 }

@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString } from 'class-validator';
+import { Matches } from 'class-validator';
 
 export class GenerateRunDto {
-  @ApiProperty({ example: '2026-09-01', description: 'First day of the month' })
-  @IsDateString()
+  @ApiProperty({ example: '2026-09', description: 'Payroll month (YYYY-MM)' })
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, {
+    message: 'month must be in YYYY-MM format',
+  })
   month!: string;
 }

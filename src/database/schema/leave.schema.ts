@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   integer,
   pgEnum,
@@ -20,6 +21,8 @@ export const leaveTypes = pgTable('leave_types', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar('name', { length: 50 }).notNull().unique(),
   defaultDaysPerYear: integer('default_days_per_year').notNull(),
+  /** Unpaid leave is deducted from salary in payroll runs. */
+  isPaid: boolean('is_paid').default(true).notNull(),
   ...timestamps,
 });
 
