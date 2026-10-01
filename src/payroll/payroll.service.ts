@@ -7,7 +7,6 @@ import {
 import { PayrollRepository } from './payroll.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
 import { CompanyService } from '../company/company.service.js';
-import { JwtPayload } from '../auth/auth.types.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
 
@@ -23,9 +22,8 @@ export class PayrollService {
     return await this.payrollRepository.generate(month);
   }
 
-  async approve(requester: JwtPayload, runId: number) {
-    const approver = await this.employeeService.findByUserId(requester.sub);
-    return await this.payrollRepository.approve(runId, approver.id);
+  async approve(approverUserId: number, runId: number) {
+    return await this.payrollRepository.approve(runId, approverUserId);
   }
 
   async markPaid(runId: number) {

@@ -16,6 +16,10 @@ export class PayrollRunResponseDto {
   @ApiProperty({ nullable: true, type: Date })
   approvedAt!: Date | null;
 
-  @ApiProperty({ nullable: true, type: Number })
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description: 'User id of the approver',
+  })
   approvedBy!: number | null;
 }

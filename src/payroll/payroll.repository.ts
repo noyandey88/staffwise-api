@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
@@ -43,7 +43,8 @@ export class PayrollRepository {
         .returning();
 
       // Latest salary effective by month end, for current staff only,
-      // plus approved unpaid-leave days starting this month.
+      // plus approved unpaid-leave days that fall inside this month (a
+      // leave spanning two months is split between them).
       const formerStaff = sql.join(
         SIGN_IN_BLOCKED_STATUSES.map((status) => sql`${status}`),
         sql`, `,
@@ -68,14 +69,19 @@ export class PayrollRepository {
           cs.base_pay AS "basePay",
           cs.allowances AS "allowances",
           COALESCE(SUM(
-            CASE WHEN lr.status = 'approved' AND lt.name = 'Unpaid'
-            THEN lr.days ELSE 0 END
+            LEAST(lr.end_date, ${end}::date - 1)
+              - GREATEST(lr.start_date, ${start}::date) + 1
           ), 0)::int AS "unpaidLeaveDays"
         FROM current_salary cs
-        LEFT JOIN ${leaveRequests} lr
+        LEFT JOIN (
+          ${leaveRequests} lr
+          JOIN ${leaveTypes} lt
+            ON lt.id = lr.leave_type_id AND NOT lt.is_paid
+        )
           ON lr.employee_id = cs.employee_id
-          AND lr.start_date >= ${start}::date AND lr.start_date < ${end}::date
-        LEFT JOIN ${leaveTypes} lt ON lt.id = lr.leave_type_id
+          AND lr.status = 'approved'
+          AND lr.start_date < ${end}::date
+          AND lr.end_date >= ${start}::date
         GROUP BY cs.employee_id, cs.base_pay, cs.allowances
       `);
 
@@ -114,7 +120,7 @@ export class PayrollRepository {
    * their payslip so later account edits don't change what gets paid;
    * refuses (409) while any employee on the run lacks a primary account.
    */
-  async approve(runId: number, approverEmployeeId: number) {
+  async approve(runId: number, approverUserId: number) {
     return this.db.transaction(async (tx) => {
       const [run] = await tx
         .select()
@@ -165,7 +171,7 @@ export class PayrollRepository {
         .set({
           status: 'approved',
           approvedAt: new Date(),
-          approvedBy: approverEmployeeId,
+          approvedBy: approverUserId,
         })
         .where(eq(payrollRuns.id, runId))
         .returning();
@@ -197,10 +203,19 @@ export class PayrollRepository {
     });
   }
 
+  /** Released payslips only: drafts can still change before approval. */
   async payslipsForEmployee(employeeId: number) {
-    return this.db.query.payslips.findMany({
-      where: eq(payslips.employeeId, employeeId),
-      orderBy: (t, { desc }) => desc(t.createdAt),
-    });
+    const rows = await this.db
+      .select({ payslip: payslips })
+      .from(payslips)
+      .innerJoin(payrollRuns, eq(payrollRuns.id, payslips.payrollRunId))
+      .where(
+        and(
+          eq(payslips.employeeId, employeeId),
+          inArray(payrollRuns.status, ['approved', 'paid']),
+        ),
+      )
+      .orderBy(desc(payrollRuns.month));
+    return rows.map((r) => r.payslip);
   }
 }

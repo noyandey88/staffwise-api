@@ -22,7 +22,6 @@ import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
 import { PayrollRunResponseDto } from './dto/payroll-run-response.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { type JwtPayload } from '../auth/auth.types.js';
 import { PayslipResponseDto } from './dto/payslip-response.dto.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
 
@@ -50,10 +49,10 @@ export class PayrollController {
   @ApiEnvelope(PayrollRunResponseDto, { message: 'Payroll run approved' })
   @ApiErrorResponses(HttpStatus.NOT_FOUND, HttpStatus.CONFLICT)
   async approve(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser('sub') userId: number,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.payrollService.approve(user, id);
+    return this.payrollService.approve(userId, id);
   }
 
   @Patch('/runs/:id/mark-paid')
@@ -93,7 +92,10 @@ export class PayrollController {
   }
 
   @Get('/payslips/me')
-  @ApiOperation({ summary: 'My payslip history' })
+  @ApiOperation({
+    summary: 'My payslip history',
+    description: 'Only payslips from approved or paid runs.',
+  })
   @ApiEnvelope(PayslipResponseDto, {
     message: 'Payslips retrieved successfully',
     isArray: true,

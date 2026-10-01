@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { timestamps } from './common.schema.js';
 import { employees } from './employees.schema.js';
+import { users } from './user.schema.js';
 
 export const payrollRunStatusEnum = pgEnum('payroll_run_status', [
   'draft',
@@ -54,7 +55,8 @@ export const payrollRuns = pgTable(
       .defaultNow()
       .notNull(),
     approvedAt: timestamp('approved_at', { withTimezone: true, mode: 'date' }),
-    approvedBy: integer('approved_by').references(() => employees.id),
+    /** User id, so accounts without an employee record (super admin) can approve. */
+    approvedBy: integer('approved_by').references(() => users.id),
   },
   (t) => [unique('payroll_run_month_eq').on(t.month)],
 );

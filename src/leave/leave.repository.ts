@@ -84,7 +84,7 @@ export class LeaveRepository {
         remainingDays: leaveBalances.remainingDays,
       })
       .from(leaveBalances)
-      .innerJoin(leaveTypes, eq(leaveTypes.id, leaveBalances.id))
+      .innerJoin(leaveTypes, eq(leaveTypes.id, leaveBalances.leaveTypeId))
       .where(
         and(
           eq(leaveBalances.employeeId, employeeId),

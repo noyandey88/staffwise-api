@@ -134,6 +134,13 @@
       "when": 1790855409761,
       "tag": "0018_overrated_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790855967176,
+      "tag": "0019_sudden_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
