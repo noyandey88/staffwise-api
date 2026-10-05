@@ -19,6 +19,8 @@ import { salaryCertificates } from '../database/schema/salary-certificate.schema
 import { separations } from '../database/schema/separation.schema.js';
 import { dayStatusSql } from '../attendance/attendance.repository.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
+import { arrangementLateral } from '../work-mode/work-mode.sql.js';
+import { remoteWorkRequests } from '../database/schema/remote-work.schema.js';
 
 /** SQL list of the statuses that mean "has left". */
 const formerStaff = () =>
@@ -93,13 +95,15 @@ export class ReportRepository {
   async today(today: string, employeeIds?: number[]) {
     const [row] = await this.rows<{
       present: number;
+      inOffice: number;
+      remote: number;
       late: number;
       onLeave: number;
       notCheckedIn: number;
       offToday: number;
     }>(sql`
       WITH s AS (
-        SELECT ${dayStatusSql(today)} AS status
+        SELECT ${dayStatusSql(today)} AS status, a.work_location AS loc
         FROM ${employees} e
         CROSS JOIN LATERAL (SELECT ${today}::date AS day) d
         LEFT JOIN ${attendanceRecords} a ON a.employee_id = e.id AND a.work_date = day
@@ -108,6 +112,8 @@ export class ReportRepository {
       )
       SELECT
         count(*) FILTER (WHERE status IN ('present', 'late'))::int AS present,
+        count(*) FILTER (WHERE status IN ('present', 'late') AND coalesce(loc, 'office') = 'office')::int AS "inOffice",
+        count(*) FILTER (WHERE status IN ('present', 'late') AND loc = 'remote')::int AS remote,
         count(*) FILTER (WHERE status = 'late')::int AS late,
         count(*) FILTER (WHERE status = 'leave')::int AS "onLeave",
         count(*) FILTER (WHERE status = 'upcoming')::int AS "notCheckedIn",
@@ -203,6 +209,119 @@ export class ReportRepository {
       JOIN ${users} u ON u.id = e.user_id
       JOIN ${departments} dp ON dp.id = e.department_id
       GROUP BY e.id, e.employee_code, u.first_name, u.last_name, dp.name
+      ORDER BY dp.name, name
+    `);
+  }
+
+  /**
+   * Per current employee for [start, end) up to `today`: where they worked
+   * and how they met their arrangement. Only days that have passed and
+   * were working days for them count as required (holidays, weekends,
+   * leave and approved remote work excuse a day). Fixed arrangements
+   * (onsite, hybrid office days) require every such day; quota hybrids
+   * require min(quota, available days) per week (Monday-start, so partial
+   * weeks at month edges count fairly).
+   */
+  async workModes(
+    start: string,
+    end: string,
+    today: string,
+    employeeIds?: number[],
+  ) {
+    return this.rows<{
+      employeeId: number;
+      employeeCode: string;
+      name: string;
+      departmentName: string;
+      mode: string;
+      officeDays: number;
+      remoteDays: number;
+      outsideArrangementDays: number;
+      requiredOfficeDays: number;
+      metOfficeDays: number;
+      compliancePercent: number | null;
+    }>(sql`
+      WITH d AS (
+        SELECT e.id AS employee_id, day,
+          coalesce(arr.mode::text, 'onsite') AS mode,
+          arr.office_days, arr.office_days_per_week,
+          ${dayStatusSql(today)} AS status,
+          coalesce(a.work_location::text, 'office') AS loc,
+          coalesce(a.outside_arrangement, false) AS outside,
+          EXISTS (
+            SELECT 1 FROM ${remoteWorkRequests} rw
+            WHERE rw.employee_id = e.id AND rw.status = 'approved'
+              AND day BETWEEN rw.start_date AND rw.end_date
+          ) AS wfh
+        FROM ${employees} e
+        CROSS JOIN LATERAL (
+          SELECT g::date AS day
+          FROM generate_series(${start}::date, least(${end}::date, ${today}::date + 1) - 1, interval '1 day') g
+        ) days
+        LEFT JOIN ${attendanceRecords} a ON a.employee_id = e.id AND a.work_date = day
+        LEFT JOIN ${holidays} h ON h.date = day
+        ${arrangementLateral(sql`e`, sql`day`)}
+        WHERE e.status NOT IN (${formerStaff()}) AND ${scope(sql`e.id`, employeeIds)}
+      ),
+      f AS (
+        SELECT *,
+          status IN ('present', 'late') AS worked,
+          status IN ('present', 'late') AND loc = 'office' AS at_office,
+          status IN ('present', 'late', 'absent') AND NOT wfh AS required_day,
+          office_days_per_week IS NOT NULL AS quota
+        FROM d
+      ),
+      fixed AS (
+        SELECT employee_id,
+          count(*) FILTER (WHERE required_day AND (mode = 'onsite'
+            OR (mode = 'hybrid' AND extract(dow FROM day)::int = ANY(office_days))))::int AS required,
+          count(*) FILTER (WHERE required_day AND at_office AND (mode = 'onsite'
+            OR (mode = 'hybrid' AND extract(dow FROM day)::int = ANY(office_days))))::int AS met
+        FROM f WHERE NOT quota GROUP BY employee_id
+      ),
+      weeks AS (
+        SELECT employee_id, date_trunc('week', day) AS week,
+          least(max(office_days_per_week), count(*) FILTER (WHERE required_day)) AS required,
+          count(*) FILTER (WHERE at_office) AS office
+        FROM f WHERE quota GROUP BY employee_id, week
+      ),
+      quota AS (
+        SELECT employee_id, sum(required)::int AS required,
+          sum(least(office, required))::int AS met
+        FROM weeks GROUP BY employee_id
+      ),
+      latest AS (
+        SELECT DISTINCT ON (employee_id) employee_id,
+          CASE WHEN mode = 'hybrid' AND quota
+            THEN 'hybrid (' || office_days_per_week || '/week)'
+            WHEN mode = 'hybrid' THEN 'hybrid (fixed days)'
+            ELSE mode END AS mode
+        FROM f ORDER BY employee_id, day DESC
+      ),
+      totals AS (
+        SELECT employee_id,
+          count(*) FILTER (WHERE at_office)::int AS office_days,
+          count(*) FILTER (WHERE worked AND loc = 'remote')::int AS remote_days,
+          count(*) FILTER (WHERE outside)::int AS outside_days
+        FROM f GROUP BY employee_id
+      )
+      SELECT e.id AS "employeeId", e.employee_code AS "employeeCode",
+        u.first_name || ' ' || u.last_name AS name, dp.name AS "departmentName",
+        l.mode,
+        t.office_days AS "officeDays", t.remote_days AS "remoteDays",
+        t.outside_days AS "outsideArrangementDays",
+        (coalesce(fx.required, 0) + coalesce(qt.required, 0)) AS "requiredOfficeDays",
+        (coalesce(fx.met, 0) + coalesce(qt.met, 0)) AS "metOfficeDays",
+        CASE WHEN coalesce(fx.required, 0) + coalesce(qt.required, 0) = 0 THEN NULL
+          ELSE round(100.0 * (coalesce(fx.met, 0) + coalesce(qt.met, 0))
+            / (coalesce(fx.required, 0) + coalesce(qt.required, 0)))::int END AS "compliancePercent"
+      FROM totals t
+      JOIN latest l ON l.employee_id = t.employee_id
+      JOIN ${employees} e ON e.id = t.employee_id
+      JOIN ${users} u ON u.id = e.user_id
+      JOIN ${departments} dp ON dp.id = e.department_id
+      LEFT JOIN fixed fx ON fx.employee_id = t.employee_id
+      LEFT JOIN quota qt ON qt.employee_id = t.employee_id
       ORDER BY dp.name, name
     `);
   }

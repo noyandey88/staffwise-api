@@ -9,6 +9,7 @@ import {
 import { toCsv } from '../common/utils/csv.util.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
+import { UserRole } from '../user/user.types.js';
 
 @Injectable()
 export class ReportService {
@@ -94,6 +95,49 @@ export class ReportService {
           ['Leave', 'leave'],
           ['Holidays', 'holidays'],
           ['Worked minutes', 'workedMinutes'],
+        ])
+      : rows;
+  }
+
+  /**
+   * Office vs remote days and arrangement compliance for a month (up to
+   * today). Admin/HR: everyone; managers: their (recursive) reports.
+   */
+  async workModes(
+    requester: JwtPayload,
+    month = currentMonth(),
+    format?: 'json' | 'csv',
+  ) {
+    let employeeIds: number[] | undefined;
+    if (
+      ![UserRole.SuperAdmin, UserRole.Admin, UserRole.Hr].includes(
+        requester.role,
+      )
+    ) {
+      const me = await this.employeesService.findByUserId(requester.sub);
+      employeeIds = (await this.employeesService.reportsOf(me.id, true)).map(
+        (r) => r.id,
+      );
+    }
+    const { start, end } = monthRange(month);
+    const rows = await this.repository.workModes(
+      start,
+      end,
+      today(),
+      employeeIds,
+    );
+    return format === 'csv'
+      ? this.csv(`work-modes-${month}`, rows, [
+          ['Employee ID', 'employeeCode'],
+          ['Name', 'name'],
+          ['Department', 'departmentName'],
+          ['Arrangement', 'mode'],
+          ['Office days', 'officeDays'],
+          ['Remote days', 'remoteDays'],
+          ['Outside arrangement', 'outsideArrangementDays'],
+          ['Required office days', 'requiredOfficeDays'],
+          ['Met', 'metOfficeDays'],
+          ['Compliance %', 'compliancePercent'],
         ])
       : rows;
   }

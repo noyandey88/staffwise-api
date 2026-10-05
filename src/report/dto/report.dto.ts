@@ -41,6 +41,12 @@ export class YearReportQueryDto extends FormatQueryDto {
 class TodayDto {
   @ApiProperty({ description: 'Checked in (late included)' })
   present!: number;
+  @ApiProperty({
+    description: 'Checked in at an office (or before work modes)',
+  })
+  inOffice!: number;
+  @ApiProperty({ description: 'Checked in remotely' })
+  remote!: number;
   late!: number;
   onLeave!: number;
   @ApiProperty({ description: 'Working today, no check-in yet' })
@@ -143,4 +149,30 @@ export class PayrollReportRowDto {
   totalGross!: string;
   totalDeductions!: string;
   totalNet!: string;
+}
+
+export class WorkModeReportRowDto {
+  employeeId!: number;
+  employeeCode!: string;
+  name!: string;
+  departmentName!: string;
+  @ApiProperty({
+    example: 'hybrid (3/week)',
+    description: 'Arrangement on the last day covered',
+  })
+  mode!: string;
+  officeDays!: number;
+  remoteDays!: number;
+  @ApiProperty({
+    description: 'Remote on an office day without approval (flag policy)',
+  })
+  outsideArrangementDays!: number;
+  @ApiProperty({
+    description:
+      'Office days expected (holidays, leave and approved remote work excused)',
+  })
+  requiredOfficeDays!: number;
+  metOfficeDays!: number;
+  @ApiProperty({ nullable: true, type: Number, example: 92 })
+  compliancePercent!: number | null;
 }

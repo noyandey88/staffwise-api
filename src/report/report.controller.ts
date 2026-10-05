@@ -18,6 +18,7 @@ import {
   PayrollReportRowDto,
   TeamDashboardDto,
   YearReportQueryDto,
+  WorkModeReportRowDto,
 } from './dto/report.dto.js';
 
 @Auth()
@@ -80,6 +81,26 @@ export class ReportController {
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   attendance(@Query() query: MonthReportQueryDto) {
     return this.service.attendance(query.month, query.format);
+  }
+
+  @Get('/reports/work-modes')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: 'Office vs remote days and arrangement compliance',
+    description:
+      'Per employee for the month up to today. Admin/HR: everyone; managers: their reports.',
+  })
+  @ApiProduces('application/json', 'text/csv')
+  @ApiEnvelope(WorkModeReportRowDto, {
+    message: 'Report generated',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  workModes(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: MonthReportQueryDto,
+  ) {
+    return this.service.workModes(user, query.month, query.format);
   }
 
   @Get('/reports/leave')
