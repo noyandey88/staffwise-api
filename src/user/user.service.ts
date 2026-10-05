@@ -10,12 +10,34 @@ import { LoginDto, RegisterDto } from '../auth/dto/registerUser.dto.js';
 import { UserRepository } from './user.repository.js';
 import bcrypt from 'bcrypt';
 import { UserRole } from './user.types.js';
+import { UserListQueryDto } from './dto/user-list-query.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
-  async createUser(registerUserDto: RegisterDto) {
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly audit: AuditService,
+  ) {}
+  /** Without the password hash; undefined when no user has that email. */
+  async findByEmailOptional(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) return undefined;
+    const { password: _password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  /** Sets a password without checking the old one (reset/setup links). */
+  async setPassword(id: number, newPassword: string) {
+    await this.userRepository.updatePassword(
+      id,
+      await bcrypt.hash(newPassword, 10),
+    );
+  }
+
+  async createUser(registerUserDto: RegisterDto & { password: string }) {
     const existing = await this.userRepository.findByEmail(
       registerUserDto.email,
     );
@@ -104,8 +126,17 @@ export class UserService {
     );
   }
 
-  async findAll() {
-    return await this.userRepository.findAll();
+  async findPage(query: UserListQueryDto) {
+    const window = pageWindow(query);
+    const { items, total } = await this.userRepository.findPage(
+      {
+        search: query.search?.trim() || undefined,
+        role: query.role,
+        unlinked: query.unlinked,
+      },
+      window,
+    );
+    return paginated(items, total, window);
   }
 
   /**
@@ -128,6 +159,13 @@ export class UserService {
     }
 
     const user = (await this.userRepository.updateRole(targetId, role))!;
+    await this.audit.record({
+      action: 'user.role_changed',
+      entityType: 'user',
+      entityId: targetId,
+      before: { role: target.role },
+      after: { role: user.role },
+    });
     const { password: _password, ...safeUser } = user;
     return safeUser;
   }

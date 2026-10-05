@@ -13,6 +13,9 @@ export const companyProfile = pgTable(
     legalName: varchar('legal_name', { length: 150 }).notNull(),
     displayName: varchar('display_name', { length: 100 }).notNull(),
     logoUrl: varchar('logo_url', { length: 500 }),
+    /** Uploaded logo (StorageService key); used by PDFs and GET /company/logo. */
+    logoFileKey: varchar('logo_file_key', { length: 255 }),
+    logoContentType: varchar('logo_content_type', { length: 100 }),
     faviconUrl: varchar('favicon_url', { length: 500 }),
     primaryColor: varchar('primary_color', { length: 7 }),
     accentColor: varchar('accent_color', { length: 7 }),
@@ -21,6 +24,9 @@ export const companyProfile = pgTable(
     website: varchar('website', { length: 255 }),
     address: varchar('address', { length: 255 }),
     taxId: varchar('tax_id', { length: 50 }),
+    /** Signs issued documents (salary certificates). */
+    signatoryName: varchar('signatory_name', { length: 100 }),
+    signatoryTitle: varchar('signatory_title', { length: 100 }),
     currency: char('currency', { length: 3 }).default('BDT').notNull(),
     ...timestamps,
   },

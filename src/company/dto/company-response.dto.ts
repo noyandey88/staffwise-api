@@ -18,6 +18,11 @@ export class BrandingResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   supportEmail!: string | null;
+
+  @ApiProperty({
+    description: 'A logo file was uploaded (served at GET /api/company/logo)',
+  })
+  hasUploadedLogo!: boolean;
 }
 
 export class CompanyResponseDto extends BrandingResponseDto {
@@ -35,6 +40,12 @@ export class CompanyResponseDto extends BrandingResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   taxId!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  signatoryName!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  signatoryTitle!: string | null;
 
   @ApiProperty({ example: 'BDT' })
   currency!: string;

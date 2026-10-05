@@ -1,3 +1,12 @@
-export const ATTENDANCE_TIMEZONE = 'Asia/Dhaka';
-export const LATE_AFTER = '09:15'; // 09:00 start + 15 min grace
-export const STANDARD_WORK_MINUTES = 8 * 60;
+/**
+ * Values before any attendance policy exists (and the migration's seed).
+ * At runtime use AttendancePolicyService / the SQL helpers instead.
+ */
+export const DEFAULT_ATTENDANCE_POLICY = {
+  timezone: 'Asia/Dhaka',
+  workStartTime: '09:00',
+  lateGraceMinutes: 15,
+  standardWorkMinutes: 8 * 60,
+  correctionWindowDays: 30,
+  maxShiftHours: 24,
+} as const;

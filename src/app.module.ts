@@ -16,6 +16,17 @@ import { AttendanceModule } from './attendance/attendance.module.js';
 import { LeaveModule } from './leave/leave.module.js';
 import { PayrollModule } from './payroll/payroll.module.js';
 import { CompanyModule } from './company/company.module.js';
+import { NoticeModule } from './notice/notice.module.js';
+import { CalendarModule } from './calendar/calendar.module.js';
+import { MailModule } from './mail/mail.module.js';
+import { SalaryCertificateModule } from './certificate/salary-certificate.module.js';
+import { AuditModule } from './audit/audit.module.js';
+import { SeparationModule } from './separation/separation.module.js';
+import { ScheduleModule } from '@nestjs/schedule';
+import { StorageModule } from './storage/storage.module.js';
+import { DocumentModule } from './document/document.module.js';
+import { ReportModule } from './report/report.module.js';
+import { AttendancePolicyModule } from './attendance-policy/attendance-policy.module.js';
 
 @Module({
   imports: [
@@ -52,6 +63,17 @@ import { CompanyModule } from './company/company.module.js';
     LeaveModule,
     PayrollModule,
     CompanyModule,
+    NoticeModule,
+    CalendarModule,
+    MailModule,
+    SalaryCertificateModule,
+    AuditModule,
+    ScheduleModule.forRoot(),
+    SeparationModule,
+    StorageModule,
+    DocumentModule,
+    ReportModule,
+    AttendancePolicyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

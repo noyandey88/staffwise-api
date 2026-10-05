@@ -6,15 +6,23 @@ import {
   HttpStatus,
   Query,
   ParseIntPipe,
+  Patch,
+  Body,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import {
+  AttendanceDayDto,
   AttendanceRecordResponseDto,
   AttendanceSummaryItemDto,
 } from './dto/attendance-response.dto.js';
+import {
+  AttendanceCorrectionQueryDto,
+  AttendanceCorrectionResponseDto,
+  CreateAttendanceCorrectionDto,
+} from './dto/attendance-correction.dto.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { MonthQueryDto } from './dto/month-query.dto.js';
@@ -68,6 +76,152 @@ export class AttendanceController {
     @Query() query: MonthQueryDto,
   ) {
     return this.attendanceService.findMine(userId, query.month);
+  }
+
+  @Get('/me/days')
+  @ApiOperation({
+    summary: 'My day-by-day status for a month',
+    description:
+      'present/late/absent/leave/holiday/weekend/upcoming per day, derived at read time',
+  })
+  @ApiEnvelope(AttendanceDayDto, {
+    message: 'Attendance days retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  myDays(@CurrentUser('sub') userId: number, @Query() query: MonthQueryDto) {
+    return this.attendanceService.myDays(userId, query.month);
+  }
+
+  @Get('/employee/:id/days')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: "An employee's day-by-day status for a month",
+    description: 'Admin/HR: any employee. Manager: self and reports only.',
+  })
+  @ApiEnvelope(AttendanceDayDto, {
+    message: 'Attendance days retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.FORBIDDEN,
+    HttpStatus.NOT_FOUND,
+  )
+  async employeeDays(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: MonthQueryDto,
+  ) {
+    return await this.attendanceService.daysForEmployee(user, id, query.month);
+  }
+
+  // --- corrections ---
+
+  @Post('/corrections')
+  @ApiOperation({
+    summary: 'Request an attendance correction',
+    description:
+      "Fix a day's check-in and/or check-out (today or the last 30 days). " +
+      'Applied to the record when approved.',
+  })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance correction submitted',
+    status: HttpStatus.CREATED,
+  })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.CONFLICT,
+  )
+  requestCorrection(
+    @CurrentUser('sub') userId: number,
+    @Body() dto: CreateAttendanceCorrectionDto,
+  ) {
+    return this.attendanceService.requestCorrection(userId, dto);
+  }
+
+  @Get('/corrections/me')
+  @ApiOperation({ summary: 'My attendance corrections' })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance corrections retrieved successfully',
+    isArray: true,
+  })
+  myCorrections(@CurrentUser('sub') userId: number) {
+    return this.attendanceService.myCorrections(userId);
+  }
+
+  @Get('/corrections')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: 'Attendance corrections, filterable',
+    description: 'Admin/HR: everyone. Manager: only their reports.',
+  })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance corrections retrieved successfully',
+    paginated: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.FORBIDDEN)
+  findCorrections(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: AttendanceCorrectionQueryDto,
+  ) {
+    return this.attendanceService.findCorrections(user, query);
+  }
+
+  @Patch('/corrections/:id/cancel')
+  @ApiOperation({ summary: 'Cancel my pending attendance correction' })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance correction cancelled',
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND, HttpStatus.CONFLICT)
+  cancelCorrection(
+    @CurrentUser('sub') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.attendanceService.cancelCorrection(userId, id);
+  }
+
+  @Patch('/corrections/:id/approve')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: 'Approve an attendance correction',
+    description:
+      "Writes the corrected times onto the day's record (creating it if missing). " +
+      'Nobody reviews their own; managers only their reports.',
+  })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance correction approved',
+  })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.FORBIDDEN,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.CONFLICT,
+  )
+  approveCorrection(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.attendanceService.approveCorrection(user, id);
+  }
+
+  @Patch('/corrections/:id/reject')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({ summary: 'Reject an attendance correction' })
+  @ApiEnvelope(AttendanceCorrectionResponseDto, {
+    message: 'Attendance correction rejected',
+  })
+  @ApiErrorResponses(
+    HttpStatus.FORBIDDEN,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.CONFLICT,
+  )
+  rejectCorrection(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.attendanceService.rejectCorrection(user, id);
   }
 
   @Get('/employee/:id')

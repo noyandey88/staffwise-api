@@ -1,5 +1,19 @@
-import { Body, Controller, Get, HttpStatus, Put } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Put,
+  UploadedFile,
+} from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiProduces,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiFileUpload } from '../common/decorators/api-file-upload.decorator.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
@@ -28,6 +42,48 @@ export class CompanyController {
     return this.companyService.branding();
   }
 
+  // Public like /branding: the login screen shows it.
+  @Get('/logo')
+  @ApiOperation({ summary: 'Uploaded company logo (public)' })
+  @ApiProduces('image/png', 'image/jpeg')
+  @ApiOkResponse({
+    description: 'Image (not wrapped in the response envelope)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  logo() {
+    return this.companyService.logo();
+  }
+
+  @Put('/logo')
+  @Auth()
+  @Roles(UserRole.Admin)
+  @ApiOperation({
+    summary: 'Upload the company logo',
+    description:
+      'PNG or JPEG; used by GET /company/logo and the PDF letterhead.',
+  })
+  @ApiFileUpload()
+  @ApiEnvelope(CompanyResponseDto, { message: 'Logo uploaded' })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.PAYLOAD_TOO_LARGE,
+  )
+  uploadLogo(@UploadedFile() file: Express.Multer.File | undefined) {
+    return this.companyService.uploadLogo(file);
+  }
+
+  @Delete('/logo')
+  @Auth()
+  @Roles(UserRole.Admin)
+  @ApiOperation({ summary: 'Remove the uploaded logo' })
+  @ApiEnvelope(CompanyResponseDto, { message: 'Logo removed' })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  removeLogo() {
+    return this.companyService.removeLogo();
+  }
+
   @Get()
   @Auth()
   @ApiOperation({ summary: 'Company profile' })
@@ -35,8 +91,8 @@ export class CompanyController {
     message: 'Company profile retrieved successfully',
   })
   @ApiErrorResponses(HttpStatus.NOT_FOUND)
-  find() {
-    return this.companyService.find();
+  async find() {
+    return this.companyService.toResponse(await this.companyService.find());
   }
 
   @Put()

@@ -25,6 +25,9 @@ ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/dist ./dist
+# Uploads with STORAGE_DRIVER=local; mount a volume here to keep them.
+RUN mkdir -p /app/storage && chown node:node /app/storage
+VOLUME /app/storage
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main"]

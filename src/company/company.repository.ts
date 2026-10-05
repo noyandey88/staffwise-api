@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
@@ -16,6 +17,15 @@ export class CompanyRepository {
 
   async find(): Promise<CompanyProfile | undefined> {
     return await this.db.query.companyProfile.findFirst();
+  }
+
+  async setLogo(fileKey: string | null, contentType: string | null) {
+    const [profile] = await this.db
+      .update(companyProfile)
+      .set({ logoFileKey: fileKey, logoContentType: contentType })
+      .where(eq(companyProfile.id, 1))
+      .returning();
+    return profile;
   }
 
   async upsert(data: Omit<NewCompanyProfile, 'id'>): Promise<CompanyProfile> {

@@ -74,6 +74,21 @@ export class UpsertCompanyDto {
   @MaxLength(255)
   address?: string;
 
+  @ApiPropertyOptional({
+    example: 'Farzana Rahman',
+    description: 'Signs issued documents such as salary certificates',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  signatoryName?: string;
+
+  @ApiPropertyOptional({ example: 'Head of People Operations' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  signatoryTitle?: string;
+
   @ApiPropertyOptional({ example: '123456789012', description: 'TIN / VAT ID' })
   @IsOptional()
   @IsString()

@@ -13,3 +13,27 @@ export const SIGN_IN_BLOCKED_STATUSES: readonly EmployeeStatus[] = [
   EmployeeStatus.Resigned,
   EmployeeStatus.Retired,
 ];
+
+export enum EmploymentType {
+  Permanent = 'permanent',
+  Contract = 'contract',
+  Intern = 'intern',
+  PartTime = 'part_time',
+}
+
+export enum Gender {
+  Male = 'male',
+  Female = 'female',
+  Other = 'other',
+}
+
+export enum BloodGroup {
+  APositive = 'A+',
+  ANegative = 'A-',
+  BPositive = 'B+',
+  BNegative = 'B-',
+  AbPositive = 'AB+',
+  AbNegative = 'AB-',
+  OPositive = 'O+',
+  ONegative = 'O-',
+}

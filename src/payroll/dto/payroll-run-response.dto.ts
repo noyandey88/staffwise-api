@@ -23,3 +23,18 @@ export class PayrollRunResponseDto {
   })
   approvedBy!: number | null;
 }
+
+/** A run with its payslip totals (list and detail views). */
+export class PayrollRunSummaryDto extends PayrollRunResponseDto {
+  @ApiProperty({ example: 42 })
+  payslipCount!: number;
+
+  @ApiProperty({ example: '2350000.00', description: 'Sum of gross pay' })
+  totalGross!: string;
+
+  @ApiProperty({ example: '42000.00' })
+  totalDeductions!: string;
+
+  @ApiProperty({ example: '2308000.00' })
+  totalNet!: string;
+}

@@ -19,14 +19,45 @@ export class PayslipResponseDto {
   @ApiProperty({ example: '5000.00' })
   allowances!: string;
 
-  @ApiProperty({ example: '1666.67' })
+  @ApiProperty({
+    example: '57000.00',
+    description: 'basePay + allowances + earning lines',
+  })
+  grossPay!: string;
+
+  @ApiProperty({ example: '1666.67', description: 'Sum of deduction lines' })
   deductions!: string;
+
+  @ApiProperty({
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', example: 'Provident fund' },
+        kind: { type: 'string', enum: ['earning', 'deduction'] },
+        amount: { type: 'string', example: '5000.00' },
+        source: {
+          type: 'string',
+          enum: ['component', 'unpaid_leave', 'adjustment'],
+        },
+        note: { type: 'string', example: '10.00% of basic' },
+      },
+    },
+  })
+  lines!: unknown[];
 
   @ApiProperty({ example: '53333.33' })
   netPay!: string;
 
   @ApiProperty({ example: 1 })
   unpaidLeaveDays!: number;
+
+  @ApiProperty({
+    nullable: true,
+    type: String,
+    example: 'Joined 2026-09-15: 16 of 30 calendar days',
+  })
+  proRataNote!: string | null;
 
   @ApiProperty({
     nullable: true,

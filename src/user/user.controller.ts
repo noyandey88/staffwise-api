@@ -6,12 +6,14 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service.js';
 import { UserResponseDto } from './dto/user-response.dto.js';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto.js';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto.js';
+import { UserListQueryDto } from './dto/user-list-query.dto.js';
 import { UserRole } from './user.types.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
@@ -40,15 +42,17 @@ export class UserController {
   @Get('/get/all')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
-    summary: 'List all users',
-    description: 'Used by admin/HR to find the user to link to an employee.',
+    summary: 'List users',
+    description:
+      'Paginated, sorted by name. Admin/HR use unlinked=true to find the user to link to a new employee.',
   })
   @ApiEnvelope(UserResponseDto, {
     message: 'Users retrieved successfully',
-    isArray: true,
+    paginated: true,
   })
-  async findAll() {
-    return await this.userService.findAll();
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  async findAll(@Query() query: UserListQueryDto) {
+    return await this.userService.findPage(query);
   }
 
   @Patch('/:id/role')

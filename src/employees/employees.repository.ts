@@ -3,7 +3,26 @@ import { DRIZZLE_ORM } from '../database/database.constants.js';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schema/index.js';
 import { employees } from '../database/schema/employees.schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { users } from '../database/schema/user.schema.js';
+import { departments } from '../database/schema/departments.schema.js';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  ilike,
+  inArray,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  likePattern,
+  type PageWindow,
+} from '../common/utils/pagination.util.js';
+import { type EmployeeStatus } from './employees.enum.js';
 import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
 
 export interface ReportRow {
@@ -13,6 +32,46 @@ export interface ReportRow {
   departmentId: number;
   jobTitle: string;
   depth: number;
+  [key: string]: unknown;
+}
+
+/** Columns any signed-in user may see (no personal details). */
+const directoryColumns = {
+  id: employees.id,
+  employeeCode: employees.employeeCode,
+  userId: employees.userId,
+  firstName: users.firstName,
+  lastName: users.lastName,
+  email: users.email,
+  jobTitle: employees.jobTitle,
+  departmentId: employees.departmentId,
+  departmentName: departments.name,
+  managerId: employees.managerId,
+  status: employees.status,
+  employmentType: employees.employmentType,
+  hiredAt: employees.hiredAt,
+};
+
+const managers = alias(employees, 'managers');
+const managerUsers = alias(users, 'manager_users');
+
+export interface EmployeeListFilter {
+  search?: string;
+  departmentId?: number;
+  managerId?: number;
+  status?: EmployeeStatus;
+}
+
+export interface UpcomingBirthdayRow {
+  employeeId: number;
+  firstName: string;
+  lastName: string;
+  jobTitle: string;
+  departmentId: number;
+  departmentName: string;
+  birthday: string;
+  nextBirthday: string;
+  daysUntil: number;
   [key: string]: unknown;
 }
 
@@ -29,6 +88,124 @@ export class EmployeesRepository {
 
   async findAll(): Promise<Employee[]> {
     return this.db.select().from(employees);
+  }
+
+  /** One page of employees joined with their user and department. */
+  async findPage(filter: EmployeeListFilter, window: PageWindow) {
+    const conditions: SQL[] = [];
+    if (filter.search) {
+      const pattern = likePattern(filter.search);
+      conditions.push(
+        or(
+          ilike(users.firstName, pattern),
+          ilike(users.lastName, pattern),
+          ilike(users.email, pattern),
+          ilike(employees.jobTitle, pattern),
+        )!,
+      );
+    }
+    if (filter.departmentId !== undefined) {
+      conditions.push(eq(employees.departmentId, filter.departmentId));
+    }
+    if (filter.managerId !== undefined) {
+      conditions.push(eq(employees.managerId, filter.managerId));
+    }
+    if (filter.status) conditions.push(eq(employees.status, filter.status));
+    const where = and(...conditions);
+
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select(directoryColumns)
+        .from(employees)
+        .innerJoin(users, eq(users.id, employees.userId))
+        .innerJoin(departments, eq(departments.id, employees.departmentId))
+        .where(where)
+        .orderBy(asc(users.firstName), asc(users.lastName), asc(employees.id))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db
+        .select({ total: count() })
+        .from(employees)
+        .innerJoin(users, eq(users.id, employees.userId))
+        .where(where),
+    ]);
+    return { items, total };
+  }
+
+  /** Directory entries for the given ids (any order). */
+  async findDirectoryEntries(ids: number[]) {
+    if (ids.length === 0) return [];
+    return this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(inArray(employees.id, ids));
+  }
+
+  /** Every employee not in `excludedStatuses`, sorted by name. */
+  async findDirectory(excludedStatuses: readonly EmployeeStatus[]) {
+    return this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(
+        excludedStatuses.length
+          ? notInArray(employees.status, [...excludedStatuses])
+          : undefined,
+      )
+      .orderBy(asc(users.firstName), asc(users.lastName), asc(employees.id));
+  }
+
+  /** Ids up the chain: direct manager first, top of the org last. */
+  async findManagerChain(id: number): Promise<number[]> {
+    const result = await this.db.execute<{ id: number }>(sql`
+      WITH RECURSIVE chain AS (
+        SELECT e.manager_id AS id, 1 AS depth
+        FROM ${employees} e WHERE e.id = ${id} AND e.manager_id IS NOT NULL
+        UNION
+        SELECT e.manager_id, c.depth + 1
+        FROM ${employees} e JOIN chain c ON e.id = c.id
+        WHERE e.manager_id IS NOT NULL AND c.depth < 100
+      )
+      SELECT id FROM chain ORDER BY depth
+    `);
+    return result.rows.map((r) => r.id);
+  }
+
+  async findDirectoryEntry(id: number) {
+    const [row] = await this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(eq(employees.id, id));
+    return row;
+  }
+
+  /** The full row with the employee's, department's and manager's names. */
+  async findProfile(id: number) {
+    const [row] = await this.db
+      .select({
+        employee: employees,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        departmentName: departments.name,
+        managerName: sql<
+          string | null
+        >`${managerUsers.firstName} || ' ' || ${managerUsers.lastName}`,
+      })
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .leftJoin(managers, eq(managers.id, employees.managerId))
+      .leftJoin(managerUsers, eq(managerUsers.id, managers.userId))
+      .where(eq(employees.id, id));
+    if (!row) return undefined;
+    const { employee, ...names } = row;
+    return { ...employee, ...names };
   }
 
   async findById(id: number): Promise<Employee | undefined> {
@@ -84,6 +261,60 @@ export class EmployeesRepository {
         JOIN reports r ON e.manager_id = r.id
       )
       SELECT * FROM reports ORDER BY depth, id
+    `);
+    return result.rows;
+  }
+
+  /**
+   * Employees whose next birthday falls within `days` of `today`
+   * (YYYY-MM-DD). Adding whole years to the birth date maps Feb 29 to
+   * Feb 28 in non-leap years.
+   */
+  async findUpcomingBirthdays(
+    today: string,
+    days: number,
+    excludedStatuses: readonly string[],
+  ): Promise<UpcomingBirthdayRow[]> {
+    const result = await this.db.execute<UpcomingBirthdayRow>(sql`
+      WITH b AS (
+        SELECT
+          e.id,
+          e.date_of_birth AS dob,
+          (date_part('year', ${today}::date) - date_part('year', e.date_of_birth))::int AS age
+        FROM ${employees} e
+        WHERE e.date_of_birth IS NOT NULL
+          AND e.status::text NOT IN (${sql.join(
+            excludedStatuses.map((s) => sql`${s}`),
+            sql`, `,
+          )})
+      ),
+      n AS (
+        SELECT
+          b.id,
+          b.dob,
+          CASE
+            WHEN (b.dob + make_interval(years => b.age))::date >= ${today}::date
+              THEN (b.dob + make_interval(years => b.age))::date
+            ELSE (b.dob + make_interval(years => b.age + 1))::date
+          END AS next_birthday
+        FROM b
+      )
+      SELECT
+        e.id AS "employeeId",
+        u.first_name AS "firstName",
+        u.last_name AS "lastName",
+        e.job_title AS "jobTitle",
+        d.id AS "departmentId",
+        d.name AS "departmentName",
+        to_char(n.dob, 'MM-DD') AS birthday,
+        to_char(n.next_birthday, 'YYYY-MM-DD') AS "nextBirthday",
+        n.next_birthday - ${today}::date AS "daysUntil"
+      FROM n
+      JOIN ${employees} e ON e.id = n.id
+      JOIN ${users} u ON u.id = e.user_id
+      JOIN ${departments} d ON d.id = e.department_id
+      WHERE n.next_birthday - ${today}::date <= ${days}
+      ORDER BY "daysUntil", u.first_name, u.last_name
     `);
     return result.rows;
   }

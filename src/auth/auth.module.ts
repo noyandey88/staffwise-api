@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { UserModule } from '../user/user.module.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
+import { PasswordResetRepository } from './password-reset.repository.js';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { RefreshTokenRepository } from './refresh-token.repository.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, RefreshTokenRepository],
+  providers: [AuthService, RefreshTokenRepository, PasswordResetRepository],
 })
 export class AuthModule {}
