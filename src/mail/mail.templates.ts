@@ -163,6 +163,30 @@ export const templates = {
       },
     ),
 
+  separationDecided: (
+    r: Recipient,
+    brand: Brand,
+    s: { lastWorkingDay: string; approved: boolean },
+  ) =>
+    render(
+      r.email,
+      s.approved
+        ? 'Your resignation has been accepted'
+        : 'Your resignation request was declined',
+      brand,
+      {
+        greeting: `Hi ${r.firstName},`,
+        paragraphs: s.approved
+          ? [
+              `Your resignation has been accepted. Your last working day is ${s.lastWorkingDay}.`,
+              'HR will share your final settlement before then.',
+            ]
+          : [
+              'Your resignation request was declined. Please talk to HR or your manager.',
+            ],
+      },
+    ),
+
   payslipReady: (r: Recipient, brand: Brand, month: string) =>
     render(r.email, `Your payslip for ${month} is ready`, brand, {
       greeting: `Hi ${r.firstName},`,

@@ -34,6 +34,14 @@ export class CreateLeaveTypeDto {
   @IsOptional()
   @IsBoolean()
   isPaid?: boolean;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: "Unused days are paid out in an employee's final settlement",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isEncashable?: boolean;
 }
 
 export class UpdateLeaveTypeDto extends PartialType(CreateLeaveTypeDto) {}
@@ -43,6 +51,7 @@ export class LeaveTypeResponseDto {
   name!: string;
   defaultDaysPerYear!: number;
   isPaid!: boolean;
+  isEncashable!: boolean;
   @ApiProperty({ nullable: true, type: Date })
   createdAt!: Date | null;
   @ApiProperty({ nullable: true, type: Date })

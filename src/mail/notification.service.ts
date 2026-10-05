@@ -138,6 +138,28 @@ export class NotificationService {
     });
   }
 
+  /** Resignation requests only; HR-recorded separations send nothing. */
+  separationDecided(separation: {
+    employeeId: number;
+    type: string;
+    lastWorkingDay: string;
+    status: string;
+  }) {
+    if (separation.type !== 'resignation') return;
+    this.background('separation decided', async () => {
+      const who = await this.repository.employeeWithManager(
+        separation.employeeId,
+      );
+      if (!who) return [];
+      return [
+        templates.separationDecided(who, await this.brand(), {
+          lastWorkingDay: separation.lastWorkingDay,
+          approved: separation.status === 'approved',
+        }),
+      ];
+    });
+  }
+
   /** month: YYYY-MM-DD (first of month) as stored on payroll_runs. */
   payslipsReleased(runId: number, month: string) {
     this.background('payslips released', async () => {

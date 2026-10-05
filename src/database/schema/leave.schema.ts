@@ -25,6 +25,8 @@ export const leaveTypes = pgTable('leave_types', {
   defaultDaysPerYear: integer('default_days_per_year').notNull(),
   /** Unpaid leave is deducted from salary in payroll runs. */
   isPaid: boolean('is_paid').default(true).notNull(),
+  /** Unused days are paid out in a final settlement. */
+  isEncashable: boolean('is_encashable').default(false).notNull(),
   ...timestamps,
 });
 

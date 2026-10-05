@@ -282,6 +282,7 @@ export class LeaveService {
       name: dto.name,
       defaultDaysPerYear: dto.defaultDaysPerYear,
       isPaid: dto.isPaid ?? true,
+      isEncashable: dto.isEncashable ?? false,
     });
     if (!type) {
       throw new ConflictException(`Leave type ${dto.name} already exists`);
@@ -301,6 +302,7 @@ export class LeaveService {
       name: dto.name ?? undefined,
       defaultDaysPerYear: dto.defaultDaysPerYear ?? undefined,
       isPaid: dto.isPaid ?? undefined,
+      isEncashable: dto.isEncashable ?? undefined,
     };
     if (Object.values(changes).every((v) => v === undefined)) return existing;
 

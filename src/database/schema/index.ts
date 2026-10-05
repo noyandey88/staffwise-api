@@ -11,3 +11,4 @@ export * from './holiday.schema.js';
 export * from './password-reset-token.schema.js';
 export * from './salary-certificate.schema.js';
 export * from './audit-log.schema.js';
+export * from './separation.schema.js';
