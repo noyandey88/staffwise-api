@@ -143,8 +143,10 @@ export class SalaryCertificateService {
       throw new NotFoundException('Salary certificate not found');
     }
 
+    const company = await this.companyService.findOptional();
     const pdf = await renderSalaryCertificatePdf({
-      company: await this.companyService.findOptional(),
+      company,
+      logo: await this.companyService.logoBytes(company),
       referenceNo: row.referenceNo!,
       purpose: row.purpose,
       addressedTo: row.addressedTo,

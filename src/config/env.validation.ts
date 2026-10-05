@@ -69,6 +69,22 @@ const envSchema = z
     WEB_APP_URL: z.url().default('http://localhost:5173'),
     /** Forgot-password link lifetime in seconds. */
     PASSWORD_RESET_EXPIRES_IN: z.coerce.number().int().positive().default(3600),
+    /** Where uploaded files live: 'local' disk or any S3-compatible store. */
+    STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    /** Directory for STORAGE_DRIVER=local (relative to the working dir). */
+    STORAGE_LOCAL_DIR: z.string().min(1).default('storage'),
+    S3_BUCKET: z.string().min(1).optional(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    /** For MinIO, R2, Spaces, …; omit for AWS. */
+    S3_ENDPOINT: z.url().optional(),
+    /** Omit both to use the AWS default credential chain (IAM role, …). */
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    /** true for MinIO and most self-hosted S3 servers. */
+    S3_FORCE_PATH_STYLE: booleanString,
+    /** Largest accepted upload, in bytes. */
+    UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10_485_760),
+
     /** New-account "set your password" link lifetime in seconds. */
     ACCOUNT_SETUP_EXPIRES_IN: z.coerce
       .number()
@@ -83,6 +99,14 @@ const envSchema = z
   .refine((env) => env.MAIL_TRANSPORT !== 'smtp' || env.SMTP_HOST, {
     message: 'SMTP_HOST is required when MAIL_TRANSPORT=smtp',
     path: ['SMTP_HOST'],
+  })
+  .refine((env) => env.STORAGE_DRIVER !== 's3' || env.S3_BUCKET, {
+    message: 'S3_BUCKET is required when STORAGE_DRIVER=s3',
+    path: ['S3_BUCKET'],
+  })
+  .refine((env) => !env.S3_ACCESS_KEY_ID === !env.S3_SECRET_ACCESS_KEY, {
+    message: 'set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither',
+    path: ['S3_SECRET_ACCESS_KEY'],
   })
   .refine((env) => !env.SMTP_USER === !env.SMTP_PASSWORD, {
     message: 'set both SMTP_USER and SMTP_PASSWORD, or neither',

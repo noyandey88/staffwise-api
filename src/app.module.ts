@@ -23,6 +23,8 @@ import { SalaryCertificateModule } from './certificate/salary-certificate.module
 import { AuditModule } from './audit/audit.module.js';
 import { SeparationModule } from './separation/separation.module.js';
 import { ScheduleModule } from '@nestjs/schedule';
+import { StorageModule } from './storage/storage.module.js';
+import { DocumentModule } from './document/document.module.js';
 
 @Module({
   imports: [
@@ -66,6 +68,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     AuditModule,
     ScheduleModule.forRoot(),
     SeparationModule,
+    StorageModule,
+    DocumentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

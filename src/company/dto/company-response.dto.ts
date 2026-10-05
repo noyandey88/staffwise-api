@@ -18,6 +18,11 @@ export class BrandingResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   supportEmail!: string | null;
+
+  @ApiProperty({
+    description: 'A logo file was uploaded (served at GET /api/company/logo)',
+  })
+  hasUploadedLogo!: boolean;
 }
 
 export class CompanyResponseDto extends BrandingResponseDto {

@@ -178,8 +178,10 @@ export class PayrollService {
       throw new NotFoundException(`Payslip with id ${payslipId} not found`);
     }
 
+    const company = await this.companyService.findOptional();
     const pdf = await renderPayslipPdf({
-      company: await this.companyService.findOptional(),
+      company,
+      logo: await this.companyService.logoBytes(company),
       ...detail,
     });
     const period = detail.run.month.slice(0, 7);

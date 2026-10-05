@@ -85,11 +85,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private extractPgError(exception: unknown): PgError | null {
+    // SQLSTATE codes are exactly 5 characters; Node/network codes such as
+    // ECONNREFUSED (e.g. from S3 or SMTP) are not database errors.
     const hasCode = (e: unknown): e is PgError =>
       typeof e === 'object' &&
       e !== null &&
       'code' in e &&
-      typeof (e as { code?: unknown }).code === 'string';
+      typeof (e as { code?: unknown }).code === 'string' &&
+      /^[0-9A-Z]{5}$/.test((e as { code: string }).code);
 
     const findPgError = (value: unknown): PgError | null => {
       if (hasCode(value)) {

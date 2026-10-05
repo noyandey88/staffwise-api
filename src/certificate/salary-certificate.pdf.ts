@@ -23,6 +23,7 @@ const EMPLOYMENT_TYPE_LABEL: Record<string, string> = {
 export interface SalaryCertificatePdfInput {
   /** Current profile, for the letterhead only; the body uses the snapshot. */
   company: CompanyProfile | undefined;
+  logo?: Buffer;
   referenceNo: string;
   purpose: string;
   addressedTo: string | null;
@@ -37,7 +38,7 @@ export function renderSalaryCertificatePdf(
   const type = EMPLOYMENT_TYPE_LABEL[s.employmentType] ?? s.employmentType;
 
   return renderPdf(`Salary Certificate ${input.referenceNo}`, (doc) => {
-    letterhead(doc, company);
+    letterhead(doc, company, input.logo);
 
     const top = doc.y;
     doc.font('Helvetica').fontSize(10).fillColor('#000000');

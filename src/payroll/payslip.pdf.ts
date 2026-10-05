@@ -15,6 +15,7 @@ import { maskAccountNumber } from './payroll.util.js';
 
 export interface PayslipPdfInput {
   company: CompanyProfile | undefined;
+  logo?: Buffer;
   run: PayrollRun;
   payslip: Payslip;
   employee: {
@@ -34,7 +35,7 @@ export function renderPayslipPdf(input: PayslipPdfInput): Promise<Buffer> {
   const gross = (Number(s.basePay) + Number(s.allowances)).toFixed(2);
 
   return renderPdf(`Payslip ${period} - ${e.employeeCode}`, (doc) => {
-    letterhead(doc, company);
+    letterhead(doc, company, input.logo);
     heading(doc, `Payslip for ${period}`);
     details(doc, [
       ['Employee', `${e.firstName} ${e.lastName}`],

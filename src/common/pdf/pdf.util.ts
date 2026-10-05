@@ -36,14 +36,31 @@ export function contentWidth(doc: Pdf) {
   return doc.page.width - MARGIN * 2;
 }
 
-/** Company name, contact line and a coloured rule. */
-export function letterhead(doc: Pdf, company: CompanyProfile | undefined) {
+/** Logo (if any) on the right, company name, contact line, coloured rule. */
+export function letterhead(
+  doc: Pdf,
+  company: CompanyProfile | undefined,
+  logo?: Buffer,
+) {
   const color = company?.primaryColor ?? DEFAULT_COLOR;
+  const logoBox = 48;
+  if (logo) {
+    try {
+      doc.image(logo, MARGIN + contentWidth(doc) - logoBox * 2, MARGIN - 6, {
+        fit: [logoBox * 2, logoBox],
+        align: 'right',
+      });
+    } catch {
+      // An unreadable image must not break the document.
+    }
+  }
   doc
     .fillColor(color)
     .font('Helvetica-Bold')
     .fontSize(18)
-    .text(company?.legalName ?? 'Staffwise', MARGIN, MARGIN);
+    .text(company?.legalName ?? 'Staffwise', MARGIN, MARGIN, {
+      width: contentWidth(doc) - (logo ? logoBox * 2 + 12 : 0),
+    });
 
   const contact = [
     company?.address,
@@ -56,10 +73,12 @@ export function letterhead(doc: Pdf, company: CompanyProfile | undefined) {
       .fillColor(MUTED)
       .font('Helvetica')
       .fontSize(9)
-      .text(contact.join('  ·  '));
+      .text(contact.join('  ·  '), {
+        width: contentWidth(doc) - (logo ? logoBox * 2 + 12 : 0),
+      });
   }
 
-  const y = doc.y + 8;
+  const y = Math.max(doc.y, logo ? MARGIN + logoBox - 6 : 0) + 8;
   doc
     .moveTo(MARGIN, y)
     .lineTo(MARGIN + contentWidth(doc), y)

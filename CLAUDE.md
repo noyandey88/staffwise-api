@@ -91,6 +91,13 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - Payslip PDF: `GET /payroll/payslips/:id/pdf` (Admin/HR any; employees their own once the run is approved/paid).
 - Salary certificates (`src/certificate/`, `salary_certificates`): employee requests (one open at a time) → Admin/HR issue or reject; HR can also issue directly; nobody issues their own. Issuing requires a company profile, a current employee and a salary in effect today, and freezes everything printed into `snapshot` (jsonb) with a `SC-<year>-NNNN` reference from `salary_certificate_ref_seq`, so re-downloads never change. Signature block uses `company_profile.signatory_name/title`.
 
+### File storage and uploads
+
+- `StorageService` (`src/storage/`, `@Global()`): `STORAGE_DRIVER=local` (files under `STORAGE_LOCAL_DIR`, default `storage/`, gitignored; `/app/storage` volume in Docker) or `s3` (any S3-compatible store: `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, credentials or the AWS default chain, `S3_FORCE_PATH_STYLE` for MinIO/SeaweedFS). Keys are server-generated (`storageKey()`), never from the uploaded name.
+- Upload routes use `@ApiFileUpload()` (FileInterceptor + multipart Swagger body — the one sanctioned explicit `@ApiBody`) and the module must import `UploadLimitsModule` (memory storage capped at `UPLOAD_MAX_BYTES` → 413). Always run `inspectUpload()`: it identifies the type from the bytes (`file-type`) against an allow-list; the client's content type and name are ignored except as a sanitized download name.
+- Employee documents (`src/document/`): Admin/HR upload any category to anyone (`POST /employees/:id/documents`); employees upload certificate/photo/other to themselves (`/employees/me/documents`). Download: Admin/HR or the owner (404 otherwise); delete: Admin/HR, or the owner for what they uploaded. `GET /employees/:id/photo` serves the latest photo to any signed-in user.
+- Company logo: `PUT/DELETE /company/logo` (Admin, PNG/JPEG), public `GET /company/logo`; responses expose `hasUploadedLogo`, never the key. PDFs embed it in the letterhead.
+
 ### Email
 
 - `MailModule` (`src/mail/`, `@Global()`): `MailService` wraps nodemailer (`MAIL_TRANSPORT=smtp` with `SMTP_*`/`MAIL_FROM`; the default `log` only logs, with bodies omitted in production). Templates in `mail.templates.ts` share one layout (plain text + escaped inline-styled HTML), branded from the company profile.
@@ -98,7 +105,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 ### Response envelope (cross-cutting)
 
-`createApp()` in `src/bootstrap.ts` builds the whole app — pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
+`createApp()` in `src/bootstrap.ts` builds the whole app — pino logger, helmet, CORS, a `ValidationPipe` (`whitelist` + `transform`, so DTOs use class-validator decorators and unknown fields are stripped), `ResponseInterceptor`, `AllExceptionsFilter`, and Swagger. `main.ts` only calls it and listens. **Add global wiring to `createApp()`, never to `main.ts`.** `AllExceptionsFilter` never sends an unexpected `Error`'s message to the client (log only). It treats an error (or its `.cause`) as a database error only when `code` is a 5-character SQLSTATE, so network errors like `ECONNREFUSED` are logged as unhandled exceptions. Every response — success or error — is normalized to the `ApiResponse` shape `{ success, status, message, payload }` (`src/common/`). Controllers return the **raw payload** (usually the service result); the interceptor builds the envelope, deriving `status` from the response's HTTP status code and `message` from `@ApiEnvelope` route metadata.
 
 Per-route contract lives in composed decorators (`src/common/decorators/`):
 

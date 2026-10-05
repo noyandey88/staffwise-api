@@ -13,6 +13,9 @@ export const companyProfile = pgTable(
     legalName: varchar('legal_name', { length: 150 }).notNull(),
     displayName: varchar('display_name', { length: 100 }).notNull(),
     logoUrl: varchar('logo_url', { length: 500 }),
+    /** Uploaded logo (StorageService key); used by PDFs and GET /company/logo. */
+    logoFileKey: varchar('logo_file_key', { length: 255 }),
+    logoContentType: varchar('logo_content_type', { length: 100 }),
     faviconUrl: varchar('favicon_url', { length: 500 }),
     primaryColor: varchar('primary_color', { length: 7 }),
     accentColor: varchar('accent_color', { length: 7 }),
