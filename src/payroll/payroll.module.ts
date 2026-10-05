@@ -11,6 +11,9 @@ import { BankAccountRepository } from './bank-account.repository.js';
 import { SalaryStructureController } from './salary-structure.controller.js';
 import { SalaryStructureService } from './salary-structure.service.js';
 import { SalaryStructureRepository } from './salary-structure.repository.js';
+import { PayComponentController } from './pay-component.controller.js';
+import { PayComponentService } from './pay-component.service.js';
+import { PayComponentRepository } from './pay-component.repository.js';
 
 @Module({
   imports: [EmployeesModule, CompanyModule, CalendarModule],
@@ -18,6 +21,7 @@ import { SalaryStructureRepository } from './salary-structure.repository.js';
     PayrollController,
     BankAccountController,
     SalaryStructureController,
+    PayComponentController,
   ],
   providers: [
     PayrollService,
@@ -26,6 +30,8 @@ import { SalaryStructureRepository } from './salary-structure.repository.js';
     BankAccountRepository,
     SalaryStructureService,
     SalaryStructureRepository,
+    PayComponentService,
+    PayComponentRepository,
   ],
 })
 export class PayrollModule {}

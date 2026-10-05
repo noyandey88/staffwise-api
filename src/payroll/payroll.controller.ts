@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { PayrollService } from './payroll.service.js';
 import { GenerateRunDto } from './dto/create-payroll.dto.js';
@@ -27,6 +28,7 @@ import {
   PayrollRunSummaryDto,
 } from './dto/payroll-run-response.dto.js';
 import { PayrollRunQueryDto } from './dto/payroll-run-query.dto.js';
+import { SetPayslipAdjustmentsDto } from './dto/pay-component.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { PayslipResponseDto } from './dto/payslip-response.dto.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
@@ -132,6 +134,26 @@ export class PayrollController {
   @ApiErrorResponses(HttpStatus.NOT_FOUND)
   async payslipsForRun(@Param('id', ParseIntPipe) id: number) {
     return this.payrollService.payslipsForRun(id);
+  }
+
+  @Put('/payslips/:id/adjustments')
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @ApiOperation({
+    summary: "Set a draft payslip's one-off adjustments",
+    description:
+      'Bonus, arrears, penalty…; replaces all adjustment lines and recomputes totals.',
+  })
+  @ApiEnvelope(PayslipResponseDto, { message: 'Payslip adjusted' })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.CONFLICT,
+  )
+  setAdjustments(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetPayslipAdjustmentsDto,
+  ) {
+    return this.payrollService.setAdjustments(id, dto);
   }
 
   @Get('/payslips/:id/pdf')

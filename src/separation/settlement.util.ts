@@ -1,13 +1,7 @@
 import type { SettlementLine } from '../database/schema/separation.schema.js';
+import { fromMinor, toMinor } from '../common/utils/money.util.js';
 
-/** Decimal string -> integer minor units (paisa/cents). */
-export function toMinor(amount: string): number {
-  return Math.round(Number(amount) * 100);
-}
-
-export function fromMinor(minor: number): string {
-  return (minor / 100).toFixed(2);
-}
+export { fromMinor, toMinor };
 
 export function daysInMonth(date: string): number {
   const [y, m] = date.split('-').map(Number);

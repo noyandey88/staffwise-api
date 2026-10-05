@@ -13,6 +13,8 @@ import { renderPayslipPdf } from './payslip.pdf.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
 import { PayrollRunQueryDto } from './dto/payroll-run-query.dto.js';
+import { SetPayslipAdjustmentsDto } from './dto/pay-component.dto.js';
+import { fromMinor, toMinor } from '../common/utils/money.util.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
@@ -158,6 +160,34 @@ export class PayrollService {
       type: 'text/csv; charset=utf-8',
       disposition: `attachment; filename="payroll-${period}-run-${run.id}.csv"`,
     });
+  }
+
+  /** One-off bonus/arrears/penalty lines on a draft run's payslip. */
+  async setAdjustments(payslipId: number, dto: SetPayslipAdjustmentsDto) {
+    const result = await this.payrollRepository.setAdjustments(
+      payslipId,
+      dto.adjustments.map((a) => ({
+        label: a.label,
+        kind: a.kind,
+        amount: fromMinor(toMinor(a.amount)),
+        source: 'adjustment' as const,
+      })),
+    );
+    if (!result) {
+      throw new NotFoundException(`Payslip with id ${payslipId} not found`);
+    }
+    await this.audit.record({
+      action: 'payslip.adjusted',
+      entityType: 'payslip',
+      entityId: payslipId,
+      before: { lines: result.before.lines, netPay: result.before.netPay },
+      after: { lines: result.after.lines, netPay: result.after.netPay },
+      metadata: {
+        employeeId: result.after.employeeId,
+        payrollRunId: result.after.payrollRunId,
+      },
+    });
+    return this.toPayslipResponse(result.after);
   }
 
   /**

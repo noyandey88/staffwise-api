@@ -1,5 +1,9 @@
 import type { CompanyProfile } from '../database/schema/company.schema.js';
-import type { Payslip, PayrollRun } from '../database/schema/payroll.schema.js';
+import type {
+  Payslip,
+  PayslipLine,
+  PayrollRun,
+} from '../database/schema/payroll.schema.js';
 import {
   amountTable,
   details,
@@ -32,7 +36,6 @@ export function renderPayslipPdf(input: PayslipPdfInput): Promise<Buffer> {
   const currency = company?.currency ?? 'BDT';
   const money = (amount: string) => formatMoney(amount, currency);
   const period = formatDate(run.month.slice(0, 7));
-  const gross = (Number(s.basePay) + Number(s.allowances)).toFixed(2);
 
   return renderPdf(`Payslip ${period} - ${e.employeeCode}`, (doc) => {
     letterhead(doc, company, input.logo);
@@ -45,19 +48,27 @@ export function renderPayslipPdf(input: PayslipPdfInput): Promise<Buffer> {
       ['Pay period', period],
       ['Unpaid leave', `${s.unpaidLeaveDays} day(s)`],
     ]);
+    const label = (l: PayslipLine) =>
+      l.note ? `${l.label} (${l.note})` : l.label;
     amountTable(
       doc,
       'Earnings',
       [
         ['Basic pay', money(s.basePay)],
         ['Allowances', money(s.allowances)],
+        ...s.lines
+          .filter((l) => l.kind === 'earning')
+          .map((l): [string, string] => [label(l), money(l.amount)]),
       ],
-      ['Gross earnings', money(gross)],
+      ['Gross earnings', money(s.grossPay)],
     );
+    const deductions = s.lines.filter((l) => l.kind === 'deduction');
     amountTable(
       doc,
       'Deductions',
-      [['Unpaid leave', money(s.deductions)]],
+      deductions.length
+        ? deductions.map((l): [string, string] => [label(l), money(l.amount)])
+        : [['None', money('0')]],
       ['Total deductions', money(s.deductions)],
     );
     amountTable(doc, 'Net pay', [], ['Net pay', money(s.netPay)]);

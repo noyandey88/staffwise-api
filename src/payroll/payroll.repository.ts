@@ -24,10 +24,19 @@ import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
   employeeBankAccounts,
+  employeePayComponents,
+  payComponents,
+  type PayslipLine,
   payrollRuns,
   payslips,
   salaryStructures,
 } from '../database/schema/payroll.schema.js';
+import {
+  type AppliedComponent,
+  componentLine,
+  payslipTotals,
+  unpaidLeaveLine,
+} from './payslip.calc.js';
 import { leaveRequests, leaveTypes } from '../database/schema/leave.schema.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { users } from '../database/schema/user.schema.js';
@@ -129,23 +138,67 @@ export class PayrollRepository {
         );
       }
 
+      // Components in force this month: an employee's own assignment wins
+      // (latest effective_from if several overlap); otherwise components
+      // that apply to everyone, at their default value.
+      const employeeIds = rows.rows.map((r) => r.employeeId);
+      const [components, assignments] = await Promise.all([
+        tx.select().from(payComponents).where(eq(payComponents.isActive, true)),
+        tx
+          .select()
+          .from(employeePayComponents)
+          .where(
+            and(
+              inArray(employeePayComponents.employeeId, employeeIds),
+              lt(employeePayComponents.effectiveFrom, end),
+              sql`(${employeePayComponents.effectiveTo} IS NULL OR ${employeePayComponents.effectiveTo} >= ${start}::date)`,
+            ),
+          )
+          .orderBy(asc(employeePayComponents.effectiveFrom)),
+      ]);
+      const assigned = new Map<string, (typeof assignments)[number]>();
+      for (const a of assignments) {
+        assigned.set(`${a.employeeId}:${a.componentId}`, a); // later rows win
+      }
+
+      const negative: number[] = [];
       const payslipValues = rows.rows.map((r) => {
-        const basePay = Number(r.basePay);
-        const allowances = Number(r.allowances);
-        const perDayRate = basePay / 30; // simple assumption, worth revisiting
-        const deductions = perDayRate * r.unpaidLeaveDays;
-        const netPay = basePay + allowances - deductions;
+        const lines: PayslipLine[] = [];
+        if (r.unpaidLeaveDays > 0) {
+          lines.push(unpaidLeaveLine(r.basePay, r.unpaidLeaveDays));
+        }
+        for (const component of components) {
+          const assignment = assigned.get(`${r.employeeId}:${component.id}`);
+          if (!assignment && !component.appliesToAll) continue;
+          const applied: AppliedComponent = {
+            component,
+            value: assignment?.value ?? component.defaultValue,
+          };
+          const line = componentLine(applied, r.basePay, r.allowances);
+          if (Number(line.amount) > 0) lines.push(line);
+        }
+        const totals = payslipTotals(r.basePay, r.allowances, lines);
+        if (totals.negative) negative.push(r.employeeId);
 
         return {
           payrollRunId: run.id,
           employeeId: r.employeeId,
           basePay: r.basePay,
           allowances: r.allowances,
-          deductions: deductions.toFixed(2),
-          netPay: netPay.toFixed(2),
+          grossPay: totals.grossPay,
+          deductions: totals.deductions,
+          netPay: totals.netPay,
+          lines,
           unpaidLeaveDays: r.unpaidLeaveDays,
         };
       });
+
+      if (negative.length) {
+        throw new ConflictException(
+          `Deductions exceed gross pay for employee(s) ${negative.join(', ')}; ` +
+            'adjust their components before generating the run',
+        );
+      }
 
       await tx.insert(payslips).values(payslipValues);
 
@@ -230,7 +283,7 @@ export class PayrollRepository {
 
   private readonly runTotals = {
     payslipCount: sql<number>`count(${payslips.id})::int`,
-    totalGross: sql<string>`coalesce(sum(${payslips.basePay} + ${payslips.allowances}), 0)::numeric(14,2)::text`,
+    totalGross: sql<string>`coalesce(sum(${payslips.grossPay}), 0)::numeric(14,2)::text`,
     totalDeductions: sql<string>`coalesce(sum(${payslips.deductions}), 0)::numeric(14,2)::text`,
     totalNet: sql<string>`coalesce(sum(${payslips.netPay}), 0)::numeric(14,2)::text`,
   };
@@ -299,6 +352,48 @@ export class PayrollRepository {
     return this.db.query.payslips.findMany({
       where: eq(payslips.payrollRunId, runId),
       orderBy: asc(payslips.employeeId),
+    });
+  }
+
+  /**
+   * Replaces a draft-run payslip's one-off adjustment lines and recomputes
+   * its totals. undefined when the payslip doesn't exist; throws 409 when
+   * the run is no longer a draft or net pay would go negative.
+   */
+  async setAdjustments(payslipId: number, adjustments: PayslipLine[]) {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ payslip: payslips, status: payrollRuns.status })
+        .from(payslips)
+        .innerJoin(payrollRuns, eq(payrollRuns.id, payslips.payrollRunId))
+        .where(eq(payslips.id, payslipId))
+        .for('update');
+      if (!row) return undefined;
+      if (row.status !== 'draft') {
+        throw new ConflictException(
+          'Adjustments are only possible while the run is a draft',
+        );
+      }
+      const slip = row.payslip;
+      const lines = [
+        ...slip.lines.filter((l) => l.source !== 'adjustment'),
+        ...adjustments,
+      ];
+      const totals = payslipTotals(slip.basePay, slip.allowances, lines);
+      if (totals.negative) {
+        throw new ConflictException('Deductions would exceed gross pay');
+      }
+      const [updated] = await tx
+        .update(payslips)
+        .set({
+          lines,
+          grossPay: totals.grossPay,
+          deductions: totals.deductions,
+          netPay: totals.netPay,
+        })
+        .where(eq(payslips.id, payslipId))
+        .returning();
+      return { before: slip, after: updated };
     });
   }
 
