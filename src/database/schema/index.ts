@@ -15,3 +15,4 @@ export * from './separation.schema.js';
 export * from './employee-document.schema.js';
 export * from './work-week.schema.js';
 export * from './attendance-policy.schema.js';
+export * from './work-arrangement.schema.js';
