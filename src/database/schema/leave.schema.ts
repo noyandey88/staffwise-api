@@ -4,6 +4,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  uniqueIndex,
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -27,18 +28,28 @@ export const leaveTypes = pgTable('leave_types', {
   ...timestamps,
 });
 
-export const leaveBalances = pgTable('leave_balances', {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  employeeId: integer('employee_id')
-    .references(() => employees.id)
-    .notNull(),
-  leaveTypeId: integer('leave_type_id')
-    .references(() => leaveTypes.id)
-    .notNull(),
-  year: integer('year').notNull(),
-  remainingDays: integer('remaining_days').notNull(),
-  ...timestamps,
-});
+export const leaveBalances = pgTable(
+  'leave_balances',
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    employeeId: integer('employee_id')
+      .references(() => employees.id)
+      .notNull(),
+    leaveTypeId: integer('leave_type_id')
+      .references(() => leaveTypes.id)
+      .notNull(),
+    year: integer('year').notNull(),
+    remainingDays: integer('remaining_days').notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('leave_balances_employee_type_year_idx').on(
+      t.employeeId,
+      t.leaveTypeId,
+      t.year,
+    ),
+  ],
+);
 
 export const leaveRequests = pgTable('leave_requests', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -60,5 +71,6 @@ export const leaveRequests = pgTable('leave_requests', {
 });
 
 export type LeaveType = typeof leaveTypes.$inferSelect;
+export type NewLeaveType = typeof leaveTypes.$inferInsert;
 export type LeaveBalance = typeof leaveBalances.$inferSelect;
 export type LeaveRequest = typeof leaveRequests.$inferSelect;

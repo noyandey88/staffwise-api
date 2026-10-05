@@ -7,6 +7,7 @@ import {
 import { PayrollRepository } from './payroll.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
 import { CompanyService } from '../company/company.service.js';
+import { CalendarService } from '../calendar/calendar.service.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
 
@@ -16,10 +17,14 @@ export class PayrollService {
     private readonly payrollRepository: PayrollRepository,
     private readonly employeeService: EmployeesService,
     private readonly companyService: CompanyService,
+    private readonly calendarService: CalendarService,
   ) {}
 
   async generate(month: string) {
-    return await this.payrollRepository.generate(month);
+    return await this.payrollRepository.generate(
+      month,
+      await this.calendarService.weekendDays(),
+    );
   }
 
   async approve(approverUserId: number, runId: number) {

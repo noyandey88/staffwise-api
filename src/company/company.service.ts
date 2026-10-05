@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CompanyRepository } from './company.repository.js';
 import { UpsertCompanyDto } from './dto/upsert-company.dto.js';
+import { DEFAULT_WEEKEND_DAYS } from '../calendar/calendar.constants.js';
 
 @Injectable()
 export class CompanyService {
@@ -46,6 +47,7 @@ export class CompanyService {
       address: dto.address ?? null,
       taxId: dto.taxId ?? null,
       currency: dto.currency ?? 'BDT',
+      weekendDays: [...(dto.weekendDays ?? DEFAULT_WEEKEND_DAYS)].sort(),
     });
   }
 }

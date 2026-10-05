@@ -18,6 +18,8 @@ import { leaveRequests, leaveTypes } from '../database/schema/leave.schema.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { monthRange } from '../attendance/attendance.util.js';
+import { holidays } from '../database/schema/holiday.schema.js';
+import { notWeekend } from '../calendar/calendar.repository.js';
 
 @Injectable()
 export class PayrollRepository {
@@ -25,7 +27,7 @@ export class PayrollRepository {
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async generate(month: string) {
+  async generate(month: string, weekendDays: readonly number[]) {
     return this.db.transaction(async (tx) => {
       const { start, end } = monthRange(month);
       const existing = await tx.query.payrollRuns.findFirst({
@@ -43,8 +45,9 @@ export class PayrollRepository {
         .returning();
 
       // Latest salary effective by month end, for current staff only,
-      // plus approved unpaid-leave days that fall inside this month (a
-      // leave spanning two months is split between them).
+      // plus approved unpaid-leave working days that fall inside this month
+      // (a leave spanning two months is split between them; weekends and
+      // public holidays are not deducted).
       const formerStaff = sql.join(
         SIGN_IN_BLOCKED_STATUSES.map((status) => sql`${status}`),
         sql`, `,
@@ -68,10 +71,7 @@ export class PayrollRepository {
           cs.employee_id AS "employeeId",
           cs.base_pay AS "basePay",
           cs.allowances AS "allowances",
-          COALESCE(SUM(
-            LEAST(lr.end_date, ${end}::date - 1)
-              - GREATEST(lr.start_date, ${start}::date) + 1
-          ), 0)::int AS "unpaidLeaveDays"
+          COALESCE(SUM(wd.days), 0)::int AS "unpaidLeaveDays"
         FROM current_salary cs
         LEFT JOIN (
           ${leaveRequests} lr
@@ -82,6 +82,16 @@ export class PayrollRepository {
           AND lr.status = 'approved'
           AND lr.start_date < ${end}::date
           AND lr.end_date >= ${start}::date
+        LEFT JOIN LATERAL (
+          SELECT count(*)::int AS days
+          FROM generate_series(
+            GREATEST(lr.start_date, ${start}::date),
+            LEAST(lr.end_date, ${end}::date - 1),
+            interval '1 day'
+          ) AS d
+          WHERE ${notWeekend(sql`d`, weekendDays)}
+            AND NOT EXISTS (SELECT 1 FROM ${holidays} h WHERE h.date = d::date)
+        ) wd ON true
         GROUP BY cs.employee_id, cs.base_pay, cs.allowances
       `);
 

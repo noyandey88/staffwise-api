@@ -39,6 +39,9 @@ export class CompanyResponseDto extends BrandingResponseDto {
   @ApiProperty({ example: 'BDT' })
   currency!: string;
 
+  @ApiProperty({ example: [5, 6], type: [Number] })
+  weekendDays!: number[];
+
   @ApiProperty({ nullable: true, type: Date })
   updatedAt!: Date | null;
 }

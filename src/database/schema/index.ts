@@ -7,3 +7,4 @@ export * from './leave.schema.js';
 export * from './payroll.schema.js';
 export * from './company.schema.js';
 export * from './notice.schema.js';
+export * from './holiday.schema.js';

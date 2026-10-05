@@ -1,11 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsInt,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateOnly } from '../../common/decorators/is-date-only.decorator.js';
 
 export class CreateLeaveRequestDto {
   @ApiProperty({ example: 1 })
@@ -13,11 +8,11 @@ export class CreateLeaveRequestDto {
   leaveTypeId!: number;
 
   @ApiProperty({ example: '2026-10-05' })
-  @IsDateString()
+  @IsDateOnly()
   startDate!: string;
 
   @ApiProperty({ example: '2026-10-07' })
-  @IsDateString()
+  @IsDateOnly()
   endDate!: string;
 
   @ApiProperty({ example: 'Family event', required: false })

@@ -1,62 +1,132 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { LeaveRepository } from './leave.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
+import { CalendarService } from '../calendar/calendar.service.js';
 import { CreateLeaveRequestDto } from './dto/create-leave.dto.js';
-import { calculateDays } from './leave.util.js';
+import {
+  CreateLeaveTypeDto,
+  UpdateLeaveTypeDto,
+} from './dto/leave-type.dto.js';
+import { AllocateBalancesDto, SetBalanceDto } from './dto/leave-balance.dto.js';
+import { LeaveRequestQueryDto } from './dto/leave-request-query.dto.js';
 import { JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
+import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
+import { today } from '../attendance/attendance.util.js';
+
+/** Roles that see and review every employee's leave. */
+const LEAVE_ADMIN_ROLES: readonly UserRole[] = [
+  UserRole.SuperAdmin,
+  UserRole.Admin,
+  UserRole.Hr,
+];
 
 @Injectable()
 export class LeaveService {
   constructor(
     private readonly leaveRepository: LeaveRepository,
     private readonly employeeService: EmployeesService,
+    private readonly calendarService: CalendarService,
   ) {}
 
-  async create(userId: number, createLeaveDto: CreateLeaveRequestDto) {
+  // --- requests ---
+
+  /**
+   * `days` counts working days only (weekends and public holidays are
+   * free). Paid leave needs enough balance up front; approval deducts it.
+   */
+  async create(userId: number, dto: CreateLeaveRequestDto) {
     const employee = await this.employeeService.findByUserId(userId);
-    const days = calculateDays(
-      createLeaveDto.startDate,
-      createLeaveDto.endDate,
+    if (dto.startDate.slice(0, 4) !== dto.endDate.slice(0, 4)) {
+      throw new BadRequestException(
+        'A leave request cannot span two years; split it at Dec 31',
+      );
+    }
+    const type = await this.findType(dto.leaveTypeId);
+    const days = await this.calendarService.workingDays(
+      dto.startDate,
+      dto.endDate,
     );
+    if (days === 0) {
+      throw new BadRequestException(
+        'The selected dates are all weekends or public holidays',
+      );
+    }
+
+    if (type.isPaid) {
+      const balance = await this.leaveRepository.findBalance(
+        employee.id,
+        type.id,
+        Number(dto.startDate.slice(0, 4)),
+      );
+      if (!balance || balance.remainingDays < days) {
+        throw new ConflictException(
+          `Insufficient ${type.name} balance: ${days} working day(s) requested, ` +
+            `${balance?.remainingDays ?? 0} remaining`,
+        );
+      }
+    }
 
     return await this.leaveRepository.create(employee.id, {
-      leaveTypeId: createLeaveDto.leaveTypeId,
-      startDate: createLeaveDto.startDate,
-      endDate: createLeaveDto.endDate,
+      leaveTypeId: type.id,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
       days,
-      reason: createLeaveDto.reason,
+      reason: dto.reason,
     });
   }
 
   async findMine(userId: number) {
-    const employe = await this.employeeService.findByUserId(userId);
-    return await this.leaveRepository.findByEmployee(employe.id);
+    const employee = await this.employeeService.findByUserId(userId);
+    return await this.leaveRepository.findByEmployee(employee.id);
   }
 
-  async myBalances(userId: number, year = new Date().getFullYear()) {
+  async cancel(userId: number, requestId: number) {
     const employee = await this.employeeService.findByUserId(userId);
-    return await this.leaveRepository.balanceForEmployee(employee.id, year);
+    const cancelled = await this.leaveRepository.cancel(requestId, employee.id);
+    if (cancelled) return cancelled;
+
+    const request = await this.leaveRepository.findById(requestId);
+    if (!request || request.employeeId !== employee.id) {
+      throw new NotFoundException('Leave request not found');
+    }
+    throw new ConflictException('Only pending requests can be cancelled');
+  }
+
+  /** Admin/HR: anyone. Manager: their (recursive) reports. */
+  async findRequests(requester: JwtPayload, query: LeaveRequestQueryDto) {
+    let employeeIds: number[] | undefined;
+    if (!LEAVE_ADMIN_ROLES.includes(requester.role)) {
+      employeeIds = await this.reportIds(requester.sub);
+      if (query.employeeId !== undefined) {
+        if (!employeeIds.includes(query.employeeId)) {
+          throw new ForbiddenException("You cannot view this employee's leave");
+        }
+      }
+    }
+    if (query.employeeId !== undefined) employeeIds = [query.employeeId];
+
+    return await this.leaveRepository.findRequests({
+      employeeIds,
+      status: query.status,
+      year: query.year,
+    });
   }
 
   async findPending(requester: JwtPayload) {
-    if (
-      requester.role === UserRole.SuperAdmin ||
-      requester.role === UserRole.Admin ||
-      requester.role === UserRole.Hr
-    )
+    if (LEAVE_ADMIN_ROLES.includes(requester.role))
       return await this.leaveRepository.findPendingForEmployees(
         await this.allEmployeeIds(),
       );
 
-    const me = await this.employeeService.findByUserId(requester.sub);
-    const reports = await this.employeeService.findReports(me.id);
     return await this.leaveRepository.findPendingForEmployees(
-      reports.map((r) => r.id),
+      await this.reportIds(requester.sub),
     );
   }
 
@@ -65,33 +135,134 @@ export class LeaveService {
     return this.leaveRepository.approve(requestId, requester.sub);
   }
 
-  /** Only managers need an employee record (to resolve their reports). */
-  private async assertCanReview(requester: JwtPayload, requestId: number) {
-    if (
-      requester.role === UserRole.SuperAdmin ||
-      requester.role === UserRole.Admin ||
-      requester.role === UserRole.Hr
-    )
-      return;
-
-    if (requester.role === UserRole.Manager) {
-      const request = await this.leaveRepository.findById(requestId);
-      if (!request) throw new NotFoundException('Leave request not found');
-      const me = await this.employeeService.findByUserId(requester.sub);
-      const reports = await this.employeeService.findReports(me.id);
-      if (reports.some((r) => r.id === request.employeeId)) return;
-    }
-
-    throw new ForbiddenException('You cannot review this leave request');
-  }
-
   async reject(requester: JwtPayload, requestId: number) {
     await this.assertCanReview(requester, requestId);
     return this.leaveRepository.reject(requestId, requester.sub);
   }
 
+  /** Only managers need an employee record (to resolve their reports). */
+  private async assertCanReview(requester: JwtPayload, requestId: number) {
+    if (LEAVE_ADMIN_ROLES.includes(requester.role)) return;
+
+    if (requester.role === UserRole.Manager) {
+      const request = await this.leaveRepository.findById(requestId);
+      if (!request) throw new NotFoundException('Leave request not found');
+      const reports = await this.reportIds(requester.sub);
+      if (reports.includes(request.employeeId)) return;
+    }
+
+    throw new ForbiddenException('You cannot review this leave request');
+  }
+
+  // --- balances ---
+
+  async myBalances(userId: number, year = this.currentYear()) {
+    const employee = await this.employeeService.findByUserId(userId);
+    return await this.leaveRepository.balanceForEmployee(employee.id, year);
+  }
+
+  async balancesForEmployee(employeeId: number, year = this.currentYear()) {
+    await this.employeeService.findById(employeeId);
+    return await this.leaveRepository.balanceForEmployee(employeeId, year);
+  }
+
+  /**
+   * Grants every paid leave type's default days to current staff (or the
+   * given employees) for a year. Existing balances are left untouched, so
+   * it is safe to re-run, e.g. after hiring.
+   */
+  async allocate(dto: AllocateBalancesDto) {
+    const employees = dto.employeeIds
+      ? await Promise.all(
+          dto.employeeIds.map((id) => this.employeeService.findById(id)),
+        )
+      : (await this.employeeService.findAll()).filter(
+          (e) => !SIGN_IN_BLOCKED_STATUSES.includes(e.status),
+        );
+    const types = (await this.leaveRepository.findTypes()).filter(
+      (t) => t.isPaid,
+    );
+
+    const created = await this.leaveRepository.allocate(
+      dto.year,
+      employees.map((e) => e.id),
+      types,
+    );
+    return { created, skipped: employees.length * types.length - created };
+  }
+
+  /** Sets one balance outright (manual adjustment, carry-over, correction). */
+  async setBalance(dto: SetBalanceDto) {
+    await this.employeeService.findById(dto.employeeId);
+    const type = await this.findType(dto.leaveTypeId);
+    if (!type.isPaid) {
+      throw new BadRequestException(
+        `${type.name} is unpaid leave and has no balance`,
+      );
+    }
+    return await this.leaveRepository.setBalance(
+      dto.employeeId,
+      dto.leaveTypeId,
+      dto.year,
+      dto.remainingDays,
+    );
+  }
+
+  // --- leave types ---
+
+  async findTypes() {
+    return await this.leaveRepository.findTypes();
+  }
+
+  async createType(dto: CreateLeaveTypeDto) {
+    const type = await this.leaveRepository.createType({
+      name: dto.name,
+      defaultDaysPerYear: dto.defaultDaysPerYear,
+      isPaid: dto.isPaid ?? true,
+    });
+    if (!type) {
+      throw new ConflictException(`Leave type ${dto.name} already exists`);
+    }
+    return type;
+  }
+
+  async updateType(id: number, dto: UpdateLeaveTypeDto) {
+    const existing = await this.findType(id);
+    const changes = {
+      name: dto.name ?? undefined,
+      defaultDaysPerYear: dto.defaultDaysPerYear ?? undefined,
+      isPaid: dto.isPaid ?? undefined,
+    };
+    if (Object.values(changes).every((v) => v === undefined)) return existing;
+
+    const type = await this.leaveRepository.updateType(id, changes);
+    if (type === null) {
+      throw new ConflictException(`Leave type ${dto.name} already exists`);
+    }
+    return type;
+  }
+
+  private async findType(id: number) {
+    const type = await this.leaveRepository.findTypeById(id);
+    if (!type)
+      throw new NotFoundException(`Leave type with id ${id} not found`);
+    return type;
+  }
+
+  // --- helpers ---
+
+  private async reportIds(userId: number) {
+    const me = await this.employeeService.findByUserId(userId);
+    const reports = await this.employeeService.findReports(me.id);
+    return reports.map((r) => r.id);
+  }
+
   private async allEmployeeIds() {
     const employees = await this.employeeService.findAll();
     return employees.map((e) => e.id);
+  }
+
+  private currentYear() {
+    return Number(today().slice(0, 4));
   }
 }

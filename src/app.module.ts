@@ -17,6 +17,7 @@ import { LeaveModule } from './leave/leave.module.js';
 import { PayrollModule } from './payroll/payroll.module.js';
 import { CompanyModule } from './company/company.module.js';
 import { NoticeModule } from './notice/notice.module.js';
+import { CalendarModule } from './calendar/calendar.module.js';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NoticeModule } from './notice/notice.module.js';
     PayrollModule,
     CompanyModule,
     NoticeModule,
+    CalendarModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],
