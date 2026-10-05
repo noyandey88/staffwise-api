@@ -16,6 +16,8 @@ import {
   or,
   sql,
   type SQL,
+  desc,
+  lte,
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -24,6 +26,7 @@ import {
 } from '../common/utils/pagination.util.js';
 import { type EmployeeStatus } from './employees.enum.js';
 import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
+import { employeeDepartments } from '../database/schema/employee-department.schema.js';
 
 export interface ReportRow {
   id: number;
@@ -172,6 +175,57 @@ export class EmployeesRepository {
       SELECT id FROM chain ORDER BY depth
     `);
     return result.rows.map((r) => r.id);
+  }
+
+  /** Records (or same-day corrects) the department from a date. */
+  async recordDepartment(
+    employeeId: number,
+    departmentId: number,
+    effectiveFrom: string,
+    createdBy?: number,
+  ) {
+    await this.db
+      .insert(employeeDepartments)
+      .values({ employeeId, departmentId, effectiveFrom, createdBy })
+      .onConflictDoUpdate({
+        target: [
+          employeeDepartments.employeeId,
+          employeeDepartments.effectiveFrom,
+        ],
+        set: { departmentId, createdBy },
+      });
+  }
+
+  /** Department on a date (latest row on or before it), if any. */
+  async departmentOn(employeeId: number, date: string) {
+    const [row] = await this.db
+      .select({ departmentId: employeeDepartments.departmentId })
+      .from(employeeDepartments)
+      .where(
+        and(
+          eq(employeeDepartments.employeeId, employeeId),
+          lte(employeeDepartments.effectiveFrom, date),
+        ),
+      )
+      .orderBy(desc(employeeDepartments.effectiveFrom))
+      .limit(1);
+    return row?.departmentId;
+  }
+
+  async departmentHistory(employeeId: number) {
+    return this.db
+      .select({
+        departmentId: employeeDepartments.departmentId,
+        departmentName: departments.name,
+        effectiveFrom: employeeDepartments.effectiveFrom,
+      })
+      .from(employeeDepartments)
+      .innerJoin(
+        departments,
+        eq(departments.id, employeeDepartments.departmentId),
+      )
+      .where(eq(employeeDepartments.employeeId, employeeId))
+      .orderBy(desc(employeeDepartments.effectiveFrom));
   }
 
   async findDirectoryEntry(id: number) {

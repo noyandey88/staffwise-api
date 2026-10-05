@@ -18,3 +18,4 @@ export * from './attendance-policy.schema.js';
 export * from './work-arrangement.schema.js';
 export * from './remote-work.schema.js';
 export * from './office.schema.js';
+export * from './employee-department.schema.js';

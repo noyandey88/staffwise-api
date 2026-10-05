@@ -80,3 +80,10 @@ export class EmployeeProfileDto extends EmployeeResponseDto {
   @ApiProperty({ nullable: true, type: String, example: 'Max Lead' })
   managerName!: string | null;
 }
+
+export class DepartmentHistoryEntryDto {
+  departmentId!: number;
+  departmentName!: string;
+  @ApiProperty({ example: '2026-10-01' })
+  effectiveFrom!: string;
+}
