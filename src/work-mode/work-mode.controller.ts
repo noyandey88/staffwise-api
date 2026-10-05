@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpStatus,
   Param,
@@ -26,11 +25,8 @@ import {
   RemoteWorkResponseDto,
 } from './dto/remote-work.dto.js';
 import {
-  CreateWorkArrangementDto,
   ResolvedArrangementQueryDto,
   ResolvedArrangementResponseDto,
-  WorkArrangementQueryDto,
-  WorkArrangementResponseDto,
 } from './dto/work-arrangement.dto.js';
 
 @Auth()
@@ -41,54 +37,6 @@ export class WorkModeController {
     private readonly service: WorkModeService,
     private readonly remoteWork: RemoteWorkService,
   ) {}
-
-  @Get('/work-arrangements')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: 'Work arrangements (company, department, employee)',
-  })
-  @ApiEnvelope(WorkArrangementResponseDto, {
-    message: 'Work arrangements retrieved successfully',
-    isArray: true,
-  })
-  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
-  list(@Query() query: WorkArrangementQueryDto) {
-    return this.service.list(query);
-  }
-
-  @Post('/work-arrangements')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: 'Set a work arrangement from a date',
-    description:
-      'onsite, remote, or hybrid (fixed officeDays or an officeDaysPerWeek quota) ' +
-      'for the company, a department or an employee; the most specific applies.',
-  })
-  @ApiEnvelope(WorkArrangementResponseDto, {
-    message: 'Work arrangement saved',
-    status: HttpStatus.CREATED,
-  })
-  @ApiErrorResponses(
-    HttpStatus.BAD_REQUEST,
-    HttpStatus.NOT_FOUND,
-    HttpStatus.CONFLICT,
-  )
-  create(
-    @CurrentUser('sub') userId: number,
-    @Body() dto: CreateWorkArrangementDto,
-  ) {
-    return this.service.create(userId, dto);
-  }
-
-  @Delete('/work-arrangements/:id')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({ summary: 'Cancel a scheduled (future) work arrangement' })
-  @ApiEnvelope(null, { message: 'Work arrangement removed' })
-  @ApiErrorResponses(HttpStatus.NOT_FOUND, HttpStatus.CONFLICT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.service.remove(id);
-    return null;
-  }
 
   @Get('/employees/me/work-arrangement')
   @ApiOperation({

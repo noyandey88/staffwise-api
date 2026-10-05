@@ -1,7 +1,11 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import {
+  DocumentBuilder,
+  SwaggerModule,
+  type OpenAPIObject,
+} from '@nestjs/swagger';
 import helmet from 'helmet';
 import { requestContextMiddleware } from './audit/request-context.js';
 import { Logger } from 'nestjs-pino';
@@ -84,11 +88,29 @@ export async function createApp(): Promise<INestApplication> {
         'access-token',
       )
       .build();
-    const documentFactory = () => SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, documentFactory);
-    SwaggerModule.setup('docs', app, documentFactory, {
-      jsonDocumentUrl: 'docs-json',
+    // One generated document, served whole at /api and split by audience:
+    // /docs (employee app) and /docs/admin (back office, /api/admin/*).
+    const full = SwaggerModule.createDocument(app, config);
+    const isAdmin = (path: string) => path.startsWith('/api/admin');
+    const subset = (keep: (path: string) => boolean): OpenAPIObject => ({
+      ...full,
+      paths: Object.fromEntries(
+        Object.entries(full.paths).filter(([path]) => keep(path)),
+      ),
     });
+    SwaggerModule.setup('api', app, full);
+    // Register the longer path first so /docs does not swallow /docs/admin.
+    SwaggerModule.setup('docs/admin', app, subset(isAdmin), {
+      jsonDocumentUrl: 'docs/admin-json',
+    });
+    SwaggerModule.setup(
+      'docs',
+      app,
+      subset((path) => !isAdmin(path)),
+      {
+        jsonDocumentUrl: 'docs-json',
+      },
+    );
   }
 
   return app;

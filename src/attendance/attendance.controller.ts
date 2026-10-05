@@ -17,7 +17,6 @@ import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import {
   AttendanceDayDto,
   AttendanceRecordResponseDto,
-  AttendanceSummaryItemDto,
 } from './dto/attendance-response.dto.js';
 import {
   AttendanceCorrectionQueryDto,
@@ -252,18 +251,5 @@ export class AttendanceController {
     @Query() query: MonthQueryDto,
   ) {
     return await this.attendanceService.findForEmployee(user, id, query.month);
-  }
-
-  @Get('/summary')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: 'Monthly attendance summary, ranked by hours worked',
-  })
-  @ApiEnvelope(AttendanceSummaryItemDto, {
-    message: 'Summary retrieved successfully',
-    isArray: true,
-  })
-  async summary(@Query() query: MonthQueryDto) {
-    return await this.attendanceService.summary(query.month);
   }
 }

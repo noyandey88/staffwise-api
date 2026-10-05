@@ -23,12 +23,12 @@ import {
 
 @Auth()
 @Roles(UserRole.Admin, UserRole.Hr)
-@ApiTags('Offices')
-@Controller('offices')
+@ApiTags('Admin · Offices')
+@Controller('admin')
 export class OfficeController {
   constructor(private readonly service: OfficeService) {}
 
-  @Get()
+  @Get('offices')
   @ApiOperation({ summary: 'Offices' })
   @ApiEnvelope(OfficeResponseDto, {
     message: 'Offices retrieved successfully',
@@ -38,7 +38,7 @@ export class OfficeController {
     return this.service.findAll();
   }
 
-  @Post()
+  @Post('offices')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Add an office',
@@ -55,7 +55,7 @@ export class OfficeController {
     return this.service.create(dto);
   }
 
-  @Patch('/:id')
+  @Patch('offices/:id')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Update an office',

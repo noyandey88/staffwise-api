@@ -13,12 +13,12 @@ import {
 } from './dto/payroll-policy.dto.js';
 
 @Auth()
-@ApiTags('Payroll policy')
-@Controller('payroll/policy')
+@ApiTags('Admin · Payroll policy')
+@Controller('admin')
 export class PayrollPolicyController {
   constructor(private readonly service: PayrollPolicyService) {}
 
-  @Get()
+  @Get('payroll/policy')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Payroll policy',
@@ -32,7 +32,7 @@ export class PayrollPolicyController {
     return this.service.rules();
   }
 
-  @Patch()
+  @Patch('payroll/policy')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Update the payroll policy',

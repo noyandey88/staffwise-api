@@ -1,6 +1,6 @@
 # Admin route prefix — design
 
-Date: 2026-10-05 · Branch: `refactor/admin-routes` · Status: **proposed — awaiting approval**
+Date: 2026-10-05 · Branch: `refactor/admin-routes` · Status: **implemented** (approved 2026-10-05)
 
 ## Goal
 

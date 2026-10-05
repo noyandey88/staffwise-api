@@ -1,23 +1,17 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
-  Post,
   Query,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service.js';
-import { CreateEmployeeDto } from './dto/create-employee.dto.js';
-import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import {
   EmployeeDirectoryDto,
   EmployeeProfileDto,
-  EmployeeResponseDto,
-  DepartmentHistoryEntryDto,
 } from './dto/employee-response.dto.js';
 import { EmployeeContactDto } from './dto/employee-contact.dto.js';
 import {
@@ -35,8 +29,6 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../user/user.types.js';
 
 @ApiTags('Employees')
 @Auth()
@@ -44,21 +36,7 @@ import { UserRole } from '../user/user.types.js';
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
-  @Post('/create')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: 'Create a new employee',
-    description: 'Creates a new employee using the provided details.',
-  })
-  @ApiEnvelope(EmployeeResponseDto, {
-    message: 'Employee created successfully',
-  })
-  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.CONFLICT)
-  async create(@Body() data: CreateEmployeeDto) {
-    return await this.employeesService.create(data);
-  }
-
-  @Get('/get/all')
+  @Get()
   @ApiOperation({
     summary: 'List employees',
     description:
@@ -89,20 +67,6 @@ export class EmployeesController {
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   async upcomingBirthdays(@Query() query: UpcomingBirthdaysQueryDto) {
     return await this.employeesService.upcomingBirthdays(query.days);
-  }
-
-  @Get('/get/:id')
-  @ApiOperation({
-    summary: 'Retrieve an employee by ID',
-    description:
-      'Directory entry (no personal details); see /employees/:id/profile.',
-  })
-  @ApiEnvelope(EmployeeDirectoryDto, {
-    message: 'Employee retrieved successfully',
-  })
-  @ApiErrorResponses(HttpStatus.NOT_FOUND)
-  async findById(@Param('id', ParseIntPipe) id: number) {
-    return await this.employeesService.findDirectoryEntry(id);
   }
 
   @Get('/org-chart')
@@ -136,22 +100,6 @@ export class EmployeesController {
     @Query() query: ReportsQueryDto,
   ) {
     return await this.employeesService.reportsOf(id, query.all);
-  }
-
-  @Get('/:id/department-history')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: "An employee's department history",
-    description:
-      'Newest first; date-based rules use the department in force on each day.',
-  })
-  @ApiEnvelope(DepartmentHistoryEntryDto, {
-    message: 'Department history retrieved successfully',
-    isArray: true,
-  })
-  @ApiErrorResponses(HttpStatus.NOT_FOUND)
-  async departmentHistory(@Param('id', ParseIntPipe) id: number) {
-    return await this.employeesService.departmentHistory(id);
   }
 
   @Get('/:id/managers')
@@ -213,34 +161,18 @@ export class EmployeesController {
     return await this.employeesService.findProfile(user, id);
   }
 
-  @Patch('/update')
-  @Roles(UserRole.Admin, UserRole.Hr)
+  // Last: a param route would otherwise shadow /org-chart and friends.
+  @Get('/:id')
   @ApiOperation({
-    summary: 'Update an employee',
-    description: 'Updates an employee using the provided details.',
+    summary: 'Retrieve an employee by ID',
+    description:
+      'Directory entry (no personal details); see /employees/:id/profile.',
   })
-  @ApiEnvelope(EmployeeResponseDto, {
-    message: 'Employee updated successfully',
+  @ApiEnvelope(EmployeeDirectoryDto, {
+    message: 'Employee retrieved successfully',
   })
-  @ApiErrorResponses(
-    HttpStatus.BAD_REQUEST,
-    HttpStatus.NOT_FOUND,
-    HttpStatus.CONFLICT,
-  )
-  async update(@Body() data: UpdateEmployeeDto) {
-    return await this.employeesService.update(data);
-  }
-
-  @Delete('/delete/:id')
-  @Roles(UserRole.Admin)
-  @ApiOperation({
-    summary: 'Delete an employee',
-    description: 'Deletes an employee by their ID.',
-  })
-  @ApiEnvelope(null, {
-    message: 'Employee deleted successfully',
-  })
-  async delete(@Param('id', ParseIntPipe) id: number) {
-    return await this.employeesService.delete(id);
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  async findById(@Param('id', ParseIntPipe) id: number) {
+    return await this.employeesService.findDirectoryEntry(id);
   }
 }

@@ -7,10 +7,11 @@ import { WorkModeService } from './work-mode.service.js';
 import { WorkModeRepository } from './work-mode.repository.js';
 import { RemoteWorkService } from './remote-work.service.js';
 import { RemoteWorkRepository } from './remote-work.repository.js';
+import { WorkModeAdminController } from './work-mode-admin.controller.js';
 
 @Module({
   imports: [EmployeesModule, DepartmentModule, CalendarModule],
-  controllers: [WorkModeController],
+  controllers: [WorkModeController, WorkModeAdminController],
   providers: [
     WorkModeService,
     WorkModeRepository,
