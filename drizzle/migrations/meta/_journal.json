@@ -239,6 +239,13 @@
       "when": 1791186340319,
       "tag": "0033_legal_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791187922813,
+      "tag": "0034_chubby_the_call",
+      "breakpoints": true
     }
   ]
 }

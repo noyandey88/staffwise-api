@@ -14,10 +14,7 @@ import {
   monthRange,
   today,
 } from './attendance.util.js';
-import {
-  CORRECTION_WINDOW_DAYS,
-  MAX_SHIFT_HOURS,
-} from './attendance.constants.js';
+import { AttendancePolicyService } from '../attendance-policy/attendance-policy.service.js';
 import {
   AttendanceCorrectionQueryDto,
   CreateAttendanceCorrectionDto,
@@ -42,6 +39,7 @@ export class AttendanceService {
     private readonly attendanceRepository: AttendanceRepository,
     private readonly employeeService: EmployeesService,
     private readonly notifications: NotificationService,
+    private readonly policy: AttendancePolicyService,
     private readonly audit: AuditService,
   ) {}
 
@@ -134,7 +132,7 @@ export class AttendanceService {
 
   /**
    * Asks to set a day's check-in and/or check-out. The day must be today or
-   * within CORRECTION_WINDOW_DAYS before it; a day without a record needs
+   * within the policy's correction window before it; a day without a record needs
    * a check-in time.
    */
   async requestCorrection(userId: number, dto: CreateAttendanceCorrectionDto) {
@@ -146,9 +144,10 @@ export class AttendanceService {
     if (dto.workDate > now) {
       throw new BadRequestException('Future days cannot be corrected');
     }
-    if (dto.workDate < addDays(now, -CORRECTION_WINDOW_DAYS)) {
+    const { correctionWindowDays } = this.policy.rules();
+    if (dto.workDate < addDays(now, -correctionWindowDays)) {
       throw new BadRequestException(
-        `Only the last ${CORRECTION_WINDOW_DAYS} days can be corrected`,
+        `Only the last ${correctionWindowDays} days can be corrected`,
       );
     }
     if (dto.workDate < employee.hiredAt) {
@@ -311,15 +310,13 @@ export class AttendanceService {
 
   private assertValidShift(checkInAt: Date, checkOutAt: Date | null) {
     if (!checkOutAt) return;
+    const { maxShiftHours } = this.policy.rules();
     if (checkOutAt <= checkInAt) {
       throw new BadRequestException('Check-out must be after check-in');
     }
-    if (
-      checkOutAt.getTime() - checkInAt.getTime() >
-      MAX_SHIFT_HOURS * 3600_000
-    ) {
+    if (checkOutAt.getTime() - checkInAt.getTime() > maxShiftHours * 3600_000) {
       throw new BadRequestException(
-        `A shift cannot be longer than ${MAX_SHIFT_HOURS} hours`,
+        `A shift cannot be longer than ${maxShiftHours} hours`,
       );
     }
   }

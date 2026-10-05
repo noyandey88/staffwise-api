@@ -5,10 +5,10 @@ import {
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { SeparationService } from './separation.service.js';
-import { ATTENDANCE_TIMEZONE } from '../attendance/attendance.constants.js';
 
 /**
- * Applies separations the day after the last working day. Also runs at
+ * Applies separations once the last working day has passed (checked
+ * hourly in the organisation's timezone). Also runs at
  * startup so a missed midnight (deploy, outage) is caught up. Safe on
  * several instances: completion is a conditional update.
  */
@@ -22,7 +22,9 @@ export class SeparationScheduler implements OnApplicationBootstrap {
     void this.run();
   }
 
-  @Cron('5 0 * * *', { timeZone: ATTENDANCE_TIMEZONE })
+  // Hourly rather than at local midnight: the organisation's timezone is
+  // configurable, and completing is a no-op until a separation is due.
+  @Cron('5 * * * *')
   async run() {
     try {
       await this.separationService.completeDue();

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { and, count, desc, eq, sql, type SQL } from 'drizzle-orm';
-import { ATTENDANCE_TIMEZONE } from '../attendance/attendance.constants.js';
+import { activeTimezone } from '../attendance/attendance.util.js';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
@@ -16,7 +16,7 @@ export interface AuditFilter {
   action?: string;
   entityType?: string;
   entityId?: string;
-  /** First local day (YYYY-MM-DD, attendance timezone), inclusive. */
+  /** First local day (YYYY-MM-DD, organisation timezone), inclusive. */
   from?: string;
   /** Last local day, inclusive. */
   to?: string;
@@ -54,12 +54,12 @@ export class AuditRepository {
     // Local midnight of a day as an instant: date::timestamp AT TIME ZONE tz.
     if (filter.from) {
       conditions.push(
-        sql`${auditLogs.createdAt} >= (${filter.from}::date::timestamp AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)`,
+        sql`${auditLogs.createdAt} >= (${filter.from}::date::timestamp AT TIME ZONE ${activeTimezone()}::text)`,
       );
     }
     if (filter.to) {
       conditions.push(
-        sql`${auditLogs.createdAt} < ((${filter.to}::date + 1)::timestamp AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)`,
+        sql`${auditLogs.createdAt} < ((${filter.to}::date + 1)::timestamp AT TIME ZONE ${activeTimezone()}::text)`,
       );
     }
     const where = and(...conditions);

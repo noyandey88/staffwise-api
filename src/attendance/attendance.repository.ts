@@ -37,10 +37,9 @@ import type { PageWindow } from '../common/utils/pagination.util.js';
 import type { AttendanceCorrectionStatus } from './dto/attendance-correction.dto.js';
 import type { DayStatus } from './dto/attendance-response.dto.js';
 import {
-  ATTENDANCE_TIMEZONE,
-  LATE_AFTER,
-  STANDARD_WORK_MINUTES,
-} from './attendance.constants.js';
+  isLateSql,
+  standardMinutesSql,
+} from '../attendance-policy/policy.sql.js';
 
 /**
  * The day-status CASE shared by the day-by-day view and the attendance
@@ -52,8 +51,7 @@ export function dayStatusSql(today: string) {
   return sql`CASE
     WHEN a.id IS NOT NULL THEN
       CASE
-        WHEN (a.check_in_at AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)::time > ${LATE_AFTER}::time
-          THEN 'late'
+        WHEN ${isLateSql(sql`a.check_in_at`, sql`a.work_date`)} THEN 'late'
         ELSE 'present'
       END
     WHEN day < e.hired_at THEN 'not_employed'
@@ -123,11 +121,11 @@ export class AttendanceRepository {
       number | null
     >`floor(extract(epoch from (${attendanceRecords.checkOutAt} - ${attendanceRecords.checkInAt})) / 60)::int`;
 
-    const isLate = sql<boolean>`((${attendanceRecords.checkInAt} at time zone ${ATTENDANCE_TIMEZONE}::text)::time > ${LATE_AFTER}::time)`;
+    const isLate = sql<boolean>`${isLateSql(sql`${attendanceRecords.checkInAt}`, sql`${attendanceRecords.workDate}`)}`;
 
     const overtimeMinutes = sql<
       number | null
-    >`greatest(${workedMinutes} - ${STANDARD_WORK_MINUTES}::int, 0)`;
+    >`greatest(${workedMinutes} - ${standardMinutesSql(sql`${attendanceRecords.workDate}`)}, 0)`;
 
     return await this.db
       .select({
@@ -153,7 +151,8 @@ export class AttendanceRepository {
         WITH daily AS (
           SELECT
             a.employee_id,
-            (a.check_in_at AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)::time > ${LATE_AFTER}::time AS is_late,
+            ${isLateSql(sql`a.check_in_at`, sql`a.work_date`)} AS is_late,
+            ${standardMinutesSql(sql`a.work_date`)} AS standard,
             floor(extract(epoch FROM (a.check_out_at - a.check_in_at)) / 60) AS worked
           FROM attendance_records a
           WHERE a.work_date >= ${start}::date AND a.work_date < ${end}::date
@@ -164,7 +163,7 @@ export class AttendanceRepository {
             COUNT(*) AS days_present,
             COUNT(*) FILTER (WHERE is_late) AS late_days,
             COALESCE(SUM(worked), 0) AS worked_minutes,
-            COALESCE(SUM(GREATEST(worked - ${STANDARD_WORK_MINUTES}::int, 0)), 0) AS overtime_minutes
+            COALESCE(SUM(GREATEST(worked - standard, 0)), 0) AS overtime_minutes
           FROM daily
           GROUP BY employee_id
         )

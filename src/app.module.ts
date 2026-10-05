@@ -26,6 +26,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { StorageModule } from './storage/storage.module.js';
 import { DocumentModule } from './document/document.module.js';
 import { ReportModule } from './report/report.module.js';
+import { AttendancePolicyModule } from './attendance-policy/attendance-policy.module.js';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ReportModule } from './report/report.module.js';
     StorageModule,
     DocumentModule,
     ReportModule,
+    AttendancePolicyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],
