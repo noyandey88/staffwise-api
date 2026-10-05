@@ -12,6 +12,8 @@ import { NotificationService } from '../mail/notification.service.js';
 import { renderPayslipPdf } from './payslip.pdf.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
+import { PayrollRunQueryDto } from './dto/payroll-run-query.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
 
@@ -24,6 +26,31 @@ export class PayrollService {
     private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
   ) {}
+
+  async listRuns(query: PayrollRunQueryDto) {
+    const window = pageWindow(query);
+    const { items, total } = await this.payrollRepository.findRunPage(
+      { status: query.status, year: query.year },
+      window,
+    );
+    return paginated(items, total, window);
+  }
+
+  async runSummary(runId: number) {
+    const run = await this.payrollRepository.findRunSummary(runId);
+    if (!run) {
+      throw new NotFoundException(`Payroll run with id ${runId} not found`);
+    }
+    return run;
+  }
+
+  /** Drafts only: approved runs are released to employees and the bank. */
+  async deleteDraft(runId: number) {
+    await this.findRun(runId);
+    if (!(await this.payrollRepository.deleteDraft(runId))) {
+      throw new ConflictException('Only draft runs can be deleted');
+    }
+  }
 
   async generate(month: string) {
     return await this.payrollRepository.generate(

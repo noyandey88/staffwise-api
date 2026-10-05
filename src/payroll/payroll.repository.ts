@@ -5,7 +5,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
+import type { PageWindow } from '../common/utils/pagination.util.js';
+import type { PayrollRunStatus } from './dto/payroll-run-query.dto.js';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
@@ -22,6 +36,15 @@ import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { monthRange } from '../attendance/attendance.util.js';
 import { holidays } from '../database/schema/holiday.schema.js';
 import { notWeekend } from '../calendar/calendar.repository.js';
+
+const getRunColumns = () => ({
+  id: payrollRuns.id,
+  month: payrollRuns.month,
+  status: payrollRuns.status,
+  generatedAt: payrollRuns.generatedAt,
+  approvedAt: payrollRuns.approvedAt,
+  approvedBy: payrollRuns.approvedBy,
+});
 
 @Injectable()
 export class PayrollRepository {
@@ -203,6 +226,67 @@ export class PayrollRepository {
     if (!updated)
       throw new ConflictException('Only approved runs can be marked paid');
     return updated;
+  }
+
+  private readonly runTotals = {
+    payslipCount: sql<number>`count(${payslips.id})::int`,
+    totalGross: sql<string>`coalesce(sum(${payslips.basePay} + ${payslips.allowances}), 0)::numeric(14,2)::text`,
+    totalDeductions: sql<string>`coalesce(sum(${payslips.deductions}), 0)::numeric(14,2)::text`,
+    totalNet: sql<string>`coalesce(sum(${payslips.netPay}), 0)::numeric(14,2)::text`,
+  };
+
+  /** Runs newest month first, each with payslip totals. */
+  async findRunPage(
+    filter: { status?: PayrollRunStatus; year?: number },
+    window: PageWindow,
+  ) {
+    const conditions: SQL[] = [];
+    if (filter.status) conditions.push(eq(payrollRuns.status, filter.status));
+    if (filter.year !== undefined) {
+      conditions.push(
+        gte(payrollRuns.month, `${filter.year}-01-01`),
+        lt(payrollRuns.month, `${filter.year + 1}-01-01`),
+      );
+    }
+    const where = and(...conditions);
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select({ ...getRunColumns(), ...this.runTotals })
+        .from(payrollRuns)
+        .leftJoin(payslips, eq(payslips.payrollRunId, payrollRuns.id))
+        .where(where)
+        .groupBy(payrollRuns.id)
+        .orderBy(desc(payrollRuns.month))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db.select({ total: count() }).from(payrollRuns).where(where),
+    ]);
+    return { items, total };
+  }
+
+  async findRunSummary(runId: number) {
+    const [row] = await this.db
+      .select({ ...getRunColumns(), ...this.runTotals })
+      .from(payrollRuns)
+      .leftJoin(payslips, eq(payslips.payrollRunId, payrollRuns.id))
+      .where(eq(payrollRuns.id, runId))
+      .groupBy(payrollRuns.id);
+    return row;
+  }
+
+  /** Deletes a draft run and its payslips; false if it isn't a draft (any more). */
+  async deleteDraft(runId: number): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [run] = await tx
+        .select()
+        .from(payrollRuns)
+        .where(eq(payrollRuns.id, runId))
+        .for('update');
+      if (!run || run.status !== 'draft') return false;
+      await tx.delete(payslips).where(eq(payslips.payrollRunId, runId));
+      await tx.delete(payrollRuns).where(eq(payrollRuns.id, runId));
+      return true;
+    });
   }
 
   async findRun(runId: number) {

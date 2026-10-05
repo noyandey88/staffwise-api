@@ -80,6 +80,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 - `src/common/pdf/`: `renderPdf()` builds an A4 PDF in memory with pdfkit (built-in Helvetica, so Latin text only); `letterhead()`, `details()`, `amountTable()`, `paragraph()` give every document the company letterhead and layout. `money.util.ts` formats amounts (lakh/crore grouping and words for BDT/INR) — amounts stay decimal strings, never floats.
 - PDFs are returned as `StreamableFile` (passed through the envelope unwrapped), documented with `@ApiProduces` + `@ApiOkResponse` binary schema. Unauthorized viewers get 404, not 403.
+- Payroll runs: `GET /payroll/runs` (paginated, `status`/`year`) and `/runs/:id` include payslip totals; `DELETE /payroll/runs/:id` removes a **draft** run so it can be regenerated.
 - Payslip PDF: `GET /payroll/payslips/:id/pdf` (Admin/HR any; employees their own once the run is approved/paid).
 - Salary certificates (`src/certificate/`, `salary_certificates`): employee requests (one open at a time) → Admin/HR issue or reject; HR can also issue directly; nobody issues their own. Issuing requires a company profile, a current employee and a salary in effect today, and freezes everything printed into `snapshot` (jsonb) with a `SC-<year>-NNNN` reference from `salary_certificate_ref_seq`, so re-downloads never change. Signature block uses `company_profile.signatory_name/title`.
 
