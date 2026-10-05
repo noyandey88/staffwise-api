@@ -61,24 +61,24 @@ export class LeaveService {
   }
 
   async approve(requester: JwtPayload, requestId: number) {
-    const reviewer = await this.employeeService.findByUserId(requester.sub);
-    await this.assertCanReview(requester, reviewer.id, requestId);
-    return this.leaveRepository.approve(requestId, reviewer.id);
+    await this.assertCanReview(requester, requestId);
+    return this.leaveRepository.approve(requestId, requester.sub);
   }
 
-  private async assertCanReview(
-    requester: JwtPayload,
-    reviewerEmployeeId: number,
-    requestId: number,
-  ) {
-    if (requester.role === UserRole.Admin || requester.role === UserRole.Hr)
+  /** Only managers need an employee record (to resolve their reports). */
+  private async assertCanReview(requester: JwtPayload, requestId: number) {
+    if (
+      requester.role === UserRole.SuperAdmin ||
+      requester.role === UserRole.Admin ||
+      requester.role === UserRole.Hr
+    )
       return;
 
     if (requester.role === UserRole.Manager) {
       const request = await this.leaveRepository.findById(requestId);
       if (!request) throw new NotFoundException('Leave request not found');
-      const reports =
-        await this.employeeService.findReports(reviewerEmployeeId);
+      const me = await this.employeeService.findByUserId(requester.sub);
+      const reports = await this.employeeService.findReports(me.id);
       if (reports.some((r) => r.id === request.employeeId)) return;
     }
 
@@ -86,9 +86,8 @@ export class LeaveService {
   }
 
   async reject(requester: JwtPayload, requestId: number) {
-    const reviewer = await this.employeeService.findByUserId(requester.sub);
-    await this.assertCanReview(requester, reviewer.id, requestId);
-    return this.leaveRepository.reject(requestId, reviewer.id);
+    await this.assertCanReview(requester, requestId);
+    return this.leaveRepository.reject(requestId, requester.sub);
   }
 
   private async allEmployeeIds() {

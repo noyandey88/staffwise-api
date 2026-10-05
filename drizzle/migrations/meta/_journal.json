@@ -148,6 +148,13 @@
       "when": 1791178608702,
       "tag": "0020_glorious_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791178787422,
+      "tag": "0021_sudden_blur",
+      "breakpoints": true
     }
   ]
 }

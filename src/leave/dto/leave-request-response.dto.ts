@@ -11,7 +11,11 @@ export class LeaveRequestResponseDto {
   status!: string;
   @ApiProperty({ nullable: true, type: String })
   reason!: string | null;
-  @ApiProperty({ nullable: true, type: Number })
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description: 'User id of the reviewer',
+  })
   reviewedBy!: number | null;
   @ApiProperty({ nullable: true, type: Date })
   reviewedAt!: Date | null;

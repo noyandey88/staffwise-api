@@ -8,6 +8,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { employees } from './employees.schema.js';
+import { users } from './user.schema.js';
 import { timestamps } from './common.schema.js';
 
 export const leaveStatusEnum = pgEnum('leave_status', [
@@ -52,7 +53,8 @@ export const leaveRequests = pgTable('leave_requests', {
   days: integer('days').notNull(),
   status: leaveStatusEnum('status').default('pending').notNull(),
   reason: varchar('reason', { length: 255 }),
-  reviewedBy: integer('reviewed_by').references(() => employees.id),
+  /** User id, so reviewers without an employee record (super admin) work. */
+  reviewedBy: integer('reviewed_by').references(() => users.id),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'date' }),
   ...timestamps,
 });

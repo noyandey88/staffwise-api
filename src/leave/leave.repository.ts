@@ -93,12 +93,12 @@ export class LeaveRepository {
       );
   }
 
-  async reject(requestId: number, reviewerEmployeeId: number) {
+  async reject(requestId: number, reviewerUserId: number) {
     const [updated] = await this.db
       .update(leaveRequests)
       .set({
         status: 'rejected',
-        reviewedBy: reviewerEmployeeId,
+        reviewedBy: reviewerUserId,
         reviewedAt: new Date(),
       })
       .where(
@@ -115,7 +115,7 @@ export class LeaveRepository {
     return updated;
   }
 
-  async approve(requestId: number, reviewerEmployeeId: number) {
+  async approve(requestId: number, reviewerUserId: number) {
     return this.db.transaction(async (tx) => {
       const request = await tx.query.leaveRequests.findFirst({
         where: eq(leaveRequests.id, requestId),
@@ -153,13 +153,13 @@ export class LeaveRepository {
         .set({
           remainingDays: sql`${leaveBalances.remainingDays} - ${request.days}`,
         })
-        .where(eq(leaveRequests.id, requestId));
+        .where(eq(leaveBalances.id, balance.id));
 
       const [updated] = await tx
         .update(leaveRequests)
         .set({
           status: 'approved',
-          reviewedBy: reviewerEmployeeId,
+          reviewedBy: reviewerUserId,
           reviewedAt: new Date(),
         })
         .where(eq(leaveRequests.id, requestId))
