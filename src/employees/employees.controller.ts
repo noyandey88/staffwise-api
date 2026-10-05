@@ -19,6 +19,12 @@ import {
   EmployeeResponseDto,
 } from './dto/employee-response.dto.js';
 import { EmployeeContactDto } from './dto/employee-contact.dto.js';
+import {
+  OrgChartNodeDto,
+  OrgChartQueryDto,
+  ReportEntryDto,
+  ReportsQueryDto,
+} from './dto/org-chart.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
@@ -96,6 +102,53 @@ export class EmployeesController {
   @ApiErrorResponses(HttpStatus.NOT_FOUND)
   async findById(@Param('id', ParseIntPipe) id: number) {
     return await this.employeesService.findDirectoryEntry(id);
+  }
+
+  @Get('/org-chart')
+  @ApiOperation({
+    summary: 'Organisation chart',
+    description:
+      'Current staff as a tree of directory entries (`reports` nested). ' +
+      'Someone whose manager has left appears as a root.',
+  })
+  @ApiEnvelope(OrgChartNodeDto, {
+    message: 'Org chart retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  async orgChart(@Query() query: OrgChartQueryDto) {
+    return await this.employeesService.orgChart(query.rootId);
+  }
+
+  @Get('/:id/reports')
+  @ApiOperation({
+    summary: "An employee's reports",
+    description: 'Direct reports; `all=true` for the whole subtree.',
+  })
+  @ApiEnvelope(ReportEntryDto, {
+    message: 'Reports retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  async reports(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: ReportsQueryDto,
+  ) {
+    return await this.employeesService.reportsOf(id, query.all);
+  }
+
+  @Get('/:id/managers')
+  @ApiOperation({
+    summary: "An employee's management chain",
+    description: 'Direct manager first, top of the organisation last.',
+  })
+  @ApiEnvelope(EmployeeDirectoryDto, {
+    message: 'Management chain retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  async managers(@Param('id', ParseIntPipe) id: number) {
+    return await this.employeesService.managerChain(id);
   }
 
   @Get('/me/profile')

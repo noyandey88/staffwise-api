@@ -5,13 +5,24 @@ import * as schema from '../database/schema/index.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { users } from '../database/schema/user.schema.js';
 import { departments } from '../database/schema/departments.schema.js';
-import { and, asc, count, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  ilike,
+  inArray,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   likePattern,
   type PageWindow,
 } from '../common/utils/pagination.util.js';
-import type { EmployeeStatus } from './employees.enum.js';
+import { type EmployeeStatus } from './employees.enum.js';
 import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
 
 export interface ReportRow {
@@ -119,6 +130,48 @@ export class EmployeesRepository {
         .where(where),
     ]);
     return { items, total };
+  }
+
+  /** Directory entries for the given ids (any order). */
+  async findDirectoryEntries(ids: number[]) {
+    if (ids.length === 0) return [];
+    return this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(inArray(employees.id, ids));
+  }
+
+  /** Every employee not in `excludedStatuses`, sorted by name. */
+  async findDirectory(excludedStatuses: readonly EmployeeStatus[]) {
+    return this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(
+        excludedStatuses.length
+          ? notInArray(employees.status, [...excludedStatuses])
+          : undefined,
+      )
+      .orderBy(asc(users.firstName), asc(users.lastName), asc(employees.id));
+  }
+
+  /** Ids up the chain: direct manager first, top of the org last. */
+  async findManagerChain(id: number): Promise<number[]> {
+    const result = await this.db.execute<{ id: number }>(sql`
+      WITH RECURSIVE chain AS (
+        SELECT e.manager_id AS id, 1 AS depth
+        FROM ${employees} e WHERE e.id = ${id} AND e.manager_id IS NOT NULL
+        UNION
+        SELECT e.manager_id, c.depth + 1
+        FROM ${employees} e JOIN chain c ON e.id = c.id
+        WHERE e.manager_id IS NOT NULL AND c.depth < 100
+      )
+      SELECT id FROM chain ORDER BY depth
+    `);
+    return result.rows.map((r) => r.id);
   }
 
   async findDirectoryEntry(id: number) {
