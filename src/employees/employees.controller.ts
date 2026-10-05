@@ -13,7 +13,11 @@ import {
 import { EmployeesService } from './employees.service.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
-import { EmployeeResponseDto } from './dto/employee-response.dto.js';
+import {
+  EmployeeListItemDto,
+  EmployeeResponseDto,
+} from './dto/employee-response.dto.js';
+import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
 import { UpcomingBirthdaysQueryDto } from './dto/upcoming-birthdays-query.dto.js';
 import { UpcomingBirthdayResponseDto } from './dto/upcoming-birthday-response.dto.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -45,15 +49,17 @@ export class EmployeesController {
 
   @Get('/get/all')
   @ApiOperation({
-    summary: 'Retrieve all employees',
-    description: 'Fetches a list of all available employees.',
+    summary: 'List employees',
+    description:
+      'Paginated, sorted by name; filter by search text, department, manager or status.',
   })
-  @ApiEnvelope(EmployeeResponseDto, {
+  @ApiEnvelope(EmployeeListItemDto, {
     message: 'Employees retrieved successfully',
-    isArray: true,
+    paginated: true,
   })
-  async findAll() {
-    return await this.employeesService.findAll();
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  async findAll(@Query() query: EmployeeListQueryDto) {
+    return await this.employeesService.findPage(query);
   }
 
   @Get('/birthdays/upcoming')

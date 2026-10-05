@@ -5,7 +5,22 @@ import * as schema from '../database/schema/index.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { users } from '../database/schema/user.schema.js';
 import { departments } from '../database/schema/departments.schema.js';
-import { eq, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  getTableColumns,
+  ilike,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
+import {
+  likePattern,
+  type PageWindow,
+} from '../common/utils/pagination.util.js';
+import type { EmployeeStatus } from './employees.enum.js';
 import { Employee, NewEmployee } from '../database/schema/employees.schema.js';
 
 export interface ReportRow {
@@ -16,6 +31,13 @@ export interface ReportRow {
   jobTitle: string;
   depth: number;
   [key: string]: unknown;
+}
+
+export interface EmployeeListFilter {
+  search?: string;
+  departmentId?: number;
+  managerId?: number;
+  status?: EmployeeStatus;
 }
 
 export interface UpcomingBirthdayRow {
@@ -44,6 +66,54 @@ export class EmployeesRepository {
 
   async findAll(): Promise<Employee[]> {
     return this.db.select().from(employees);
+  }
+
+  /** One page of employees joined with their user and department. */
+  async findPage(filter: EmployeeListFilter, window: PageWindow) {
+    const conditions: SQL[] = [];
+    if (filter.search) {
+      const pattern = likePattern(filter.search);
+      conditions.push(
+        or(
+          ilike(users.firstName, pattern),
+          ilike(users.lastName, pattern),
+          ilike(users.email, pattern),
+          ilike(employees.jobTitle, pattern),
+        )!,
+      );
+    }
+    if (filter.departmentId !== undefined) {
+      conditions.push(eq(employees.departmentId, filter.departmentId));
+    }
+    if (filter.managerId !== undefined) {
+      conditions.push(eq(employees.managerId, filter.managerId));
+    }
+    if (filter.status) conditions.push(eq(employees.status, filter.status));
+    const where = and(...conditions);
+
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select({
+          ...getTableColumns(employees),
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          departmentName: departments.name,
+        })
+        .from(employees)
+        .innerJoin(users, eq(users.id, employees.userId))
+        .innerJoin(departments, eq(departments.id, employees.departmentId))
+        .where(where)
+        .orderBy(asc(users.firstName), asc(users.lastName), asc(employees.id))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db
+        .select({ total: count() })
+        .from(employees)
+        .innerJoin(users, eq(users.id, employees.userId))
+        .where(where),
+    ]);
+    return { items, total };
   }
 
   async findById(id: number): Promise<Employee | undefined> {

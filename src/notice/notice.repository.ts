@@ -1,6 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, desc, eq, gt, isNull, lte, or, type SQL } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  isNull,
+  lte,
+  or,
+  type SQL,
+} from 'drizzle-orm';
+import type { PageWindow } from '../common/utils/pagination.util.js';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
 import {
@@ -25,11 +36,17 @@ export class NoticeRepository {
   }
 
   /** Every notice, scheduled and expired included (management view). */
-  async findAll(): Promise<Notice[]> {
-    return this.db
-      .select()
-      .from(notices)
-      .orderBy(desc(notices.publishedAt), desc(notices.id));
+  async findPage(window: PageWindow) {
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select()
+        .from(notices)
+        .orderBy(desc(notices.publishedAt), desc(notices.id))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db.select({ total: count() }).from(notices),
+    ]);
+    return { items, total };
   }
 
   /**

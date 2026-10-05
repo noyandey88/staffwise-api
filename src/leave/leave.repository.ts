@@ -13,6 +13,7 @@ import { leaveTypes } from '../database/schema/index.js';
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gte,
@@ -30,6 +31,7 @@ import {
   PG_EXCLUSION_VIOLATION,
   PG_UNIQUE_VIOLATION,
 } from '../common/utils/pg-error.util.js';
+import type { PageWindow } from '../common/utils/pagination.util.js';
 
 export type LeaveStatus = (typeof leaveRequests.status.enumValues)[number];
 
@@ -218,8 +220,8 @@ export class LeaveRepository {
     });
   }
 
-  async findRequests(filter: LeaveRequestFilter) {
-    if (filter.employeeIds?.length === 0) return [];
+  async findRequests(filter: LeaveRequestFilter, window: PageWindow) {
+    if (filter.employeeIds?.length === 0) return { items: [], total: 0 };
     const conditions: SQL[] = [];
     if (filter.employeeIds) {
       conditions.push(inArray(leaveRequests.employeeId, filter.employeeIds));
@@ -231,11 +233,18 @@ export class LeaveRepository {
         lt(leaveRequests.startDate, `${filter.year + 1}-01-01`),
       );
     }
-    return this.db
-      .select()
-      .from(leaveRequests)
-      .where(and(...conditions))
-      .orderBy(desc(leaveRequests.startDate), desc(leaveRequests.id));
+    const where = and(...conditions);
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select()
+        .from(leaveRequests)
+        .where(where)
+        .orderBy(desc(leaveRequests.startDate), desc(leaveRequests.id))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db.select({ total: count() }).from(leaveRequests).where(where),
+    ]);
+    return { items, total };
   }
 
   /** Cancels the employee's own pending request; undefined if not possible. */

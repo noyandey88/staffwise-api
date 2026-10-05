@@ -6,6 +6,8 @@ import {
 import { EmployeesRepository } from './employees.repository.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
+import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { SIGN_IN_BLOCKED_STATUSES } from './employees.enum.js';
 import { today } from '../attendance/attendance.util.js';
 
@@ -30,6 +32,20 @@ export class EmployeesService {
 
   async findAll() {
     return await this.employeesRepository.findAll();
+  }
+
+  async findPage(query: EmployeeListQueryDto) {
+    const window = pageWindow(query);
+    const { items, total } = await this.employeesRepository.findPage(
+      {
+        search: query.search?.trim() || undefined,
+        departmentId: query.departmentId,
+        managerId: query.managerId,
+        status: query.status,
+      },
+      window,
+    );
+    return paginated(items, total, window);
   }
 
   async findById(id: number) {

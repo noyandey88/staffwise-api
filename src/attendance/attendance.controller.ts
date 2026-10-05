@@ -159,7 +159,7 @@ export class AttendanceController {
   })
   @ApiEnvelope(AttendanceCorrectionResponseDto, {
     message: 'Attendance corrections retrieved successfully',
-    isArray: true,
+    paginated: true,
   })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.FORBIDDEN)
   findCorrections(

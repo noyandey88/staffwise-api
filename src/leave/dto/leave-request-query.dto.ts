@@ -3,8 +3,9 @@ import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { leaveStatusEnum } from '../../database/schema/leave.schema.js';
 import type { LeaveStatus } from '../leave.repository.js';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 
-export class LeaveRequestQueryDto {
+export class LeaveRequestQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Employee id' })
   @IsOptional()
   @Type(() => Number)

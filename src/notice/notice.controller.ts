@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
@@ -21,6 +22,7 @@ import { NoticeService } from './notice.service.js';
 import { CreateNoticeDto } from './dto/create-notice.dto.js';
 import { UpdateNoticeDto } from './dto/update-notice.dto.js';
 import { NoticeResponseDto } from './dto/notice-response.dto.js';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
 
 @Auth()
 @ApiTags('Notices')
@@ -71,10 +73,11 @@ export class NoticeController {
   })
   @ApiEnvelope(NoticeResponseDto, {
     message: 'Notices retrieved successfully',
-    isArray: true,
+    paginated: true,
   })
-  async findAll() {
-    return await this.noticeService.findAll();
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  async findAll(@Query() query: PaginationQueryDto) {
+    return await this.noticeService.findAll(query);
   }
 
   @Get('/:id')

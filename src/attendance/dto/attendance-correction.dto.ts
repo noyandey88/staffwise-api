@@ -10,6 +10,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { IsDateOnly } from '../../common/decorators/is-date-only.decorator.js';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 import { attendanceCorrectionStatusEnum } from '../../database/schema/attendance.schema.js';
 
 export type AttendanceCorrectionStatus =
@@ -45,7 +46,7 @@ export class CreateAttendanceCorrectionDto {
   reason!: string;
 }
 
-export class AttendanceCorrectionQueryDto {
+export class AttendanceCorrectionQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Employee id' })
   @IsOptional()
   @Type(() => Number)

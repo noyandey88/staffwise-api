@@ -191,7 +191,7 @@ export class LeaveController {
   })
   @ApiEnvelope(LeaveRequestResponseDto, {
     message: 'Leave requests retrieved successfully',
-    isArray: true,
+    paginated: true,
   })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.FORBIDDEN)
   async findRequests(
@@ -228,7 +228,10 @@ export class LeaveController {
 
   @Patch('/:id/approve')
   @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
-  @ApiOperation({ summary: 'Approve a leave request' })
+  @ApiOperation({
+    summary: 'Approve a leave request',
+    description: 'Nobody reviews their own; managers only their reports.',
+  })
   @ApiEnvelope(LeaveRequestResponseDto, { message: 'Leave request approved' })
   @ApiErrorResponses(
     HttpStatus.CONFLICT,

@@ -11,6 +11,8 @@ import { DepartmentService } from '../department/department.service.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
 import { type Notice } from '../database/schema/notice.schema.js';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 
 /** Roles that manage notices and see every department's. */
 export const NOTICE_MANAGER_ROLES: readonly UserRole[] = [
@@ -49,8 +51,10 @@ export class NoticeService {
   }
 
   /** Management view: every notice, scheduled and expired included. */
-  async findAll() {
-    return await this.noticeRepository.findAll();
+  async findAll(query: PaginationQueryDto) {
+    const window = pageWindow(query);
+    const { items, total } = await this.noticeRepository.findPage(window);
+    return paginated(items, total, window);
   }
 
   /** Live notices for the caller: managers see all, others theirs. */

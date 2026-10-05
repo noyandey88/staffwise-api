@@ -9,7 +9,21 @@ import {
 } from '../database/schema/index.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE_ORM } from '../database/database.constants.js';
-import { eq, getTableColumns } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  getTableColumns,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+} from 'drizzle-orm';
+import {
+  likePattern,
+  type PageWindow,
+} from '../common/utils/pagination.util.js';
 import { UserRole } from './user.types.js';
 
 // Every column except the password hash, for listing users.
@@ -50,8 +64,41 @@ export class UserRepository {
     return user;
   }
 
-  async findAll() {
-    return await this.db.select(publicColumns).from(users).orderBy(users.id);
+  async findPage(
+    filter: { search?: string; role?: UserRole; unlinked?: boolean },
+    window: PageWindow,
+  ) {
+    const conditions: SQL[] = [];
+    if (filter.search) {
+      const pattern = likePattern(filter.search);
+      conditions.push(
+        or(
+          ilike(users.firstName, pattern),
+          ilike(users.lastName, pattern),
+          ilike(users.email, pattern),
+        )!,
+      );
+    }
+    if (filter.role) conditions.push(eq(users.role, filter.role));
+    if (filter.unlinked === true) conditions.push(isNull(employees.id));
+    const where = and(...conditions);
+
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select(publicColumns)
+        .from(users)
+        .leftJoin(employees, eq(employees.userId, users.id))
+        .where(where)
+        .orderBy(asc(users.firstName), asc(users.lastName), asc(users.id))
+        .limit(window.limit)
+        .offset(window.offset),
+      this.db
+        .select({ total: count() })
+        .from(users)
+        .leftJoin(employees, eq(employees.userId, users.id))
+        .where(where),
+    ]);
+    return { items, total };
   }
 
   async updateRole(id: number, role: UserRole): Promise<User | undefined> {

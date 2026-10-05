@@ -17,6 +17,7 @@ import { holidays } from '../database/schema/holiday.schema.js';
 import { leaveRequests } from '../database/schema/leave.schema.js';
 import {
   and,
+  count,
   desc,
   eq,
   getTableColumns,
@@ -32,6 +33,7 @@ import {
   isPgError,
   PG_UNIQUE_VIOLATION,
 } from '../common/utils/pg-error.util.js';
+import type { PageWindow } from '../common/utils/pagination.util.js';
 import type { AttendanceCorrectionStatus } from './dto/attendance-correction.dto.js';
 import type { DayStatus } from './dto/attendance-response.dto.js';
 import {
@@ -234,11 +236,12 @@ export class AttendanceRepository {
     });
   }
 
-  async findCorrections(filter: {
-    employeeIds?: number[];
-    status?: AttendanceCorrectionStatus;
-  }) {
-    if (filter.employeeIds?.length === 0) return [];
+  /** Without a window: every match (an employee's own list). */
+  async findCorrections(
+    filter: { employeeIds?: number[]; status?: AttendanceCorrectionStatus },
+    window?: PageWindow,
+  ) {
+    if (filter.employeeIds?.length === 0) return { items: [], total: 0 };
     const conditions: SQL[] = [];
     if (filter.employeeIds) {
       conditions.push(
@@ -248,14 +251,28 @@ export class AttendanceRepository {
     if (filter.status) {
       conditions.push(eq(attendanceCorrections.status, filter.status));
     }
-    return this.db
+    const where = and(...conditions);
+    const query = this.db
       .select()
       .from(attendanceCorrections)
-      .where(and(...conditions))
+      .where(where)
       .orderBy(
         desc(attendanceCorrections.workDate),
         desc(attendanceCorrections.id),
-      );
+      )
+      .$dynamic();
+    if (!window) {
+      const items = await query;
+      return { items, total: items.length };
+    }
+    const [items, [{ total }]] = await Promise.all([
+      query.limit(window.limit).offset(window.offset),
+      this.db
+        .select({ total: count() })
+        .from(attendanceCorrections)
+        .where(where),
+    ]);
+    return { items, total };
   }
 
   /** Cancels the employee's own pending request; undefined if not possible. */

@@ -19,6 +19,8 @@ export interface ApiEnvelopeOptions {
   status?: HttpStatus;
   /** Document the payload as an array of payloadDto. */
   isArray?: boolean;
+  /** Document the payload as `Paginated<payloadDto>` (items + page meta). */
+  paginated?: boolean;
 }
 
 /**
@@ -35,9 +37,23 @@ export function ApiEnvelope(
   const message = options.message ?? 'Request successful';
 
   const payloadSchema = payloadDto
-    ? options.isArray
-      ? { type: 'array', items: { $ref: getSchemaPath(payloadDto) } }
-      : { $ref: getSchemaPath(payloadDto) }
+    ? options.paginated
+      ? {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: { $ref: getSchemaPath(payloadDto) },
+            },
+            page: { type: 'integer', example: 1 },
+            limit: { type: 'integer', example: 20 },
+            total: { type: 'integer', example: 57 },
+            totalPages: { type: 'integer', example: 3 },
+          },
+        }
+      : options.isArray
+        ? { type: 'array', items: { $ref: getSchemaPath(payloadDto) } }
+        : { $ref: getSchemaPath(payloadDto) }
     : { type: 'object', nullable: true, example: null };
 
   const decorators: MethodDecorator[] = [

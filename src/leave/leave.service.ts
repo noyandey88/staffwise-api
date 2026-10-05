@@ -19,6 +19,7 @@ import { JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { today } from '../attendance/attendance.util.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 
 /** Roles that see and review every employee's leave. */
 const LEAVE_ADMIN_ROLES: readonly UserRole[] = [
@@ -112,11 +113,12 @@ export class LeaveService {
     }
     if (query.employeeId !== undefined) employeeIds = [query.employeeId];
 
-    return await this.leaveRepository.findRequests({
-      employeeIds,
-      status: query.status,
-      year: query.year,
-    });
+    const window = pageWindow(query);
+    const { items, total } = await this.leaveRepository.findRequests(
+      { employeeIds, status: query.status, year: query.year },
+      window,
+    );
+    return paginated(items, total, window);
   }
 
   async findPending(requester: JwtPayload) {
@@ -140,15 +142,20 @@ export class LeaveService {
     return this.leaveRepository.reject(requestId, requester.sub);
   }
 
-  /** Only managers need an employee record (to resolve their reports). */
+  /** Nobody reviews their own; managers only their reports. */
   private async assertCanReview(requester: JwtPayload, requestId: number) {
+    const request = await this.leaveRepository.findById(requestId);
+    if (!request) throw new NotFoundException('Leave request not found');
+
+    const me = await this.employeeService.findOptionalByUserId(requester.sub);
+    if (me?.id === request.employeeId) {
+      throw new ForbiddenException('You cannot review your own leave request');
+    }
     if (LEAVE_ADMIN_ROLES.includes(requester.role)) return;
 
-    if (requester.role === UserRole.Manager) {
-      const request = await this.leaveRepository.findById(requestId);
-      if (!request) throw new NotFoundException('Leave request not found');
-      const reports = await this.reportIds(requester.sub);
-      if (reports.includes(request.employeeId)) return;
+    if (requester.role === UserRole.Manager && me) {
+      const reports = await this.employeeService.findReports(me.id);
+      if (reports.some((r) => r.id === request.employeeId)) return;
     }
 
     throw new ForbiddenException('You cannot review this leave request');

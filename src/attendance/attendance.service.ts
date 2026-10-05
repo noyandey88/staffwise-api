@@ -23,6 +23,7 @@ import {
   AttendanceCorrectionQueryDto,
   CreateAttendanceCorrectionDto,
 } from './dto/attendance-correction.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { UserRole } from '../user/user.types.js';
 import { JwtPayload } from '../auth/auth.types.js';
 import { EmployeeStatus } from '../employees/employees.enum.js';
@@ -195,9 +196,10 @@ export class AttendanceService {
 
   async myCorrections(userId: number) {
     const employee = await this.employeeService.findByUserId(userId);
-    return this.attendanceRepository.findCorrections({
+    const { items } = await this.attendanceRepository.findCorrections({
       employeeIds: [employee.id],
     });
+    return items;
   }
 
   /** Admin/HR: everyone. Manager: their (recursive) reports. */
@@ -218,10 +220,12 @@ export class AttendanceService {
       }
     }
     if (query.employeeId !== undefined) employeeIds = [query.employeeId];
-    return this.attendanceRepository.findCorrections({
-      employeeIds,
-      status: query.status,
-    });
+    const window = pageWindow(query);
+    const { items, total } = await this.attendanceRepository.findCorrections(
+      { employeeIds, status: query.status },
+      window,
+    );
+    return paginated(items, total, window);
   }
 
   async cancelCorrection(userId: number, id: number) {

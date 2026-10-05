@@ -10,6 +10,8 @@ import { LoginDto, RegisterDto } from '../auth/dto/registerUser.dto.js';
 import { UserRepository } from './user.repository.js';
 import bcrypt from 'bcrypt';
 import { UserRole } from './user.types.js';
+import { UserListQueryDto } from './dto/user-list-query.dto.js';
+import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 
 @Injectable()
@@ -104,8 +106,17 @@ export class UserService {
     );
   }
 
-  async findAll() {
-    return await this.userRepository.findAll();
+  async findPage(query: UserListQueryDto) {
+    const window = pageWindow(query);
+    const { items, total } = await this.userRepository.findPage(
+      {
+        search: query.search?.trim() || undefined,
+        role: query.role,
+        unlinked: query.unlinked,
+      },
+      window,
+    );
+    return paginated(items, total, window);
   }
 
   /**

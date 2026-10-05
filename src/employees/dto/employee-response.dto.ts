@@ -13,3 +13,11 @@ export class EmployeeResponseDto {
   createdAt!: Date | null;
   updatedAt!: Date | null;
 }
+
+/** List row: the employee plus who they are and where they sit. */
+export class EmployeeListItemDto extends EmployeeResponseDto {
+  firstName!: string;
+  lastName!: string;
+  email!: string;
+  departmentName!: string;
+}
