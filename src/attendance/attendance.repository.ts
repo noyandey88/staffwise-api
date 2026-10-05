@@ -42,6 +42,34 @@ import {
   STANDARD_WORK_MINUTES,
 } from './attendance.constants.js';
 
+/**
+ * The day-status CASE shared by the day-by-day view and the attendance
+ * report, so both classify a day the same way. Needs, in the FROM clause:
+ * `day` (date), employee `e`, LEFT JOINed attendance record `a` and
+ * holiday `h` for that day.
+ */
+export function dayStatusSql(today: string, weekendDays: readonly number[]) {
+  return sql`CASE
+    WHEN a.id IS NOT NULL THEN
+      CASE
+        WHEN (a.check_in_at AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)::time > ${LATE_AFTER}::time
+          THEN 'late'
+        ELSE 'present'
+      END
+    WHEN day < e.hired_at THEN 'not_employed'
+    WHEN h.id IS NOT NULL THEN 'holiday'
+    WHEN NOT (${notWeekend(sql`day`, weekendDays)}) THEN 'weekend'
+    WHEN EXISTS (
+      SELECT 1 FROM ${leaveRequests} lr
+      WHERE lr.employee_id = e.id
+        AND lr.status = 'approved'
+        AND day BETWEEN lr.start_date AND lr.end_date
+    ) THEN 'leave'
+    WHEN day >= ${today}::date THEN 'upcoming'
+    ELSE 'absent'
+  END`;
+}
+
 export interface AttendanceDayRow {
   date: string;
   status: DayStatus;
@@ -179,26 +207,8 @@ export class AttendanceRepository {
   ): Promise<AttendanceDayRow[]> {
     const result = await this.db.execute<AttendanceDayRow>(sql`
       SELECT
-        to_char(d.day, 'YYYY-MM-DD') AS date,
-        CASE
-          WHEN a.id IS NOT NULL THEN
-            CASE
-              WHEN (a.check_in_at AT TIME ZONE ${ATTENDANCE_TIMEZONE}::text)::time > ${LATE_AFTER}::time
-                THEN 'late'
-              ELSE 'present'
-            END
-          WHEN d.day < e.hired_at THEN 'not_employed'
-          WHEN h.id IS NOT NULL THEN 'holiday'
-          WHEN NOT (${notWeekend(sql`d.day`, weekendDays)}) THEN 'weekend'
-          WHEN EXISTS (
-            SELECT 1 FROM ${leaveRequests} lr
-            WHERE lr.employee_id = e.id
-              AND lr.status = 'approved'
-              AND d.day BETWEEN lr.start_date AND lr.end_date
-          ) THEN 'leave'
-          WHEN d.day >= ${today}::date THEN 'upcoming'
-          ELSE 'absent'
-        END AS status,
+        to_char(day, 'YYYY-MM-DD') AS date,
+        ${dayStatusSql(today, weekendDays)} AS status,
         h.name AS "holidayName",
         a.check_in_at AS "checkInAt",
         a.check_out_at AS "checkOutAt",
@@ -207,9 +217,9 @@ export class AttendanceRepository {
       CROSS JOIN LATERAL (SELECT g.ts::date AS day) d
       JOIN ${employees} e ON e.id = ${employeeId}
       LEFT JOIN ${attendanceRecords} a
-        ON a.employee_id = e.id AND a.work_date = d.day
-      LEFT JOIN ${holidays} h ON h.date = d.day
-      ORDER BY d.day
+        ON a.employee_id = e.id AND a.work_date = day
+      LEFT JOIN ${holidays} h ON h.date = day
+      ORDER BY day
     `);
     return result.rows;
   }

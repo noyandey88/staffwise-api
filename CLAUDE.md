@@ -71,6 +71,11 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - Notices (`src/notice/`): `department_id` null = company-wide; `published_at` in the future schedules, `expires_at` (exclusive) retires. `GET /notices` is the live feed — `NOTICE_MANAGER_ROLES` (super admin/admin/HR) see every department, everyone else company-wide + their own department (via their employee record). Non-managers get 404, not 403, for notices outside their feed. `GET /notices/all` (Admin/HR) includes scheduled and expired ones.
 - Birthdays: `employees.date_of_birth` is optional. `GET /employees/birthdays/upcoming?days=N` (default 30, max 366, any authenticated user) is raw SQL relative to `today()` in `ATTENDANCE_TIMEZONE`; it skips `SIGN_IN_BLOCKED_STATUSES`, celebrates Feb 29 on Feb 28 in non-leap years, and never returns the birth year.
 
+### Dashboard and reports
+
+- `src/report/` (read-only raw SQL in `ReportRepository`): `GET /dashboard/overview` (Admin/HR: headcount by department/type, month joiners/leavers, today's attendance, pending approvals, latest run, birthdays this week) and `GET /dashboard/team` (the caller's recursive reports). `GET /reports/{headcount,attendance,leave,payroll}` return JSON, or a CSV file with `?format=csv` (`toCsv` in `src/common/utils/csv.util.ts`, formula-safe).
+- Day classification lives in one place: `dayStatusSql()` in `attendance.repository.ts`, used by the day-by-day view, today's dashboard counts and the attendance report — change it there only.
+
 ### Health, rate limiting, logging
 
 - `HealthModule` (`src/health/`) exposes `GET /health` via `@nestjs/terminus`, checking `DrizzleHealthIndicator` (runs `SELECT 1` through the injected `DRIZZLE_ORM` instance).

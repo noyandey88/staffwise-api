@@ -17,7 +17,8 @@ import { SetPayslipAdjustmentsDto } from './dto/pay-component.dto.js';
 import { fromMinor, toMinor } from '../common/utils/money.util.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
-import { maskAccountNumber, toCsv } from './payroll.util.js';
+import { maskAccountNumber } from './payroll.util.js';
+import { toCsv } from '../common/utils/csv.util.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()

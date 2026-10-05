@@ -25,6 +25,7 @@ import { SeparationModule } from './separation/separation.module.js';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StorageModule } from './storage/storage.module.js';
 import { DocumentModule } from './document/document.module.js';
+import { ReportModule } from './report/report.module.js';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { DocumentModule } from './document/document.module.js';
     SeparationModule,
     StorageModule,
     DocumentModule,
+    ReportModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],
