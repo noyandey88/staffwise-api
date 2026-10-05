@@ -79,7 +79,15 @@ export class EmployeesService {
     this.assertCustomCode(data.employeeCode);
     this.assertEmploymentDates(data);
     await this.assertValidManager(undefined, data.managerId);
-    const employee = await this.employeesRepository.create(data);
+    const { transferDate: _ignored, ...fields } = data as typeof data & {
+      transferDate?: string;
+    };
+    const employee = await this.employeesRepository.create(fields);
+    await this.employeesRepository.recordDepartment(
+      employee.id,
+      employee.departmentId,
+      employee.hiredAt,
+    );
     await this.audit.record({
       action: 'employee.created',
       entityType: 'employee',
@@ -163,6 +171,23 @@ export class EmployeesService {
       throw new NotFoundException(`Employee with id ${rootId} not found`);
     }
     return [root];
+  }
+
+  /** Department history, newest first (Admin/HR). */
+  async departmentHistory(id: number) {
+    await this.findById(id);
+    return this.employeesRepository.departmentHistory(id);
+  }
+
+  /** The department the employee was in on a date (current one if no history). */
+  async departmentOn(
+    employee: { id: number; departmentId: number },
+    date: string,
+  ) {
+    return (
+      (await this.employeesRepository.departmentOn(employee.id, date)) ??
+      employee.departmentId
+    );
   }
 
   /** Directory view of a colleague: no personal details. */
@@ -273,7 +298,7 @@ export class EmployeesService {
 
   async update(data: UpdateEmployeeDto) {
     // id is an identity column (GENERATED ALWAYS), so it must not be in the SET clause
-    const { id, ...changes } = data;
+    const { id, transferDate, ...changes } = data;
     const existing = await this.findById(id);
     if (changes.employeeCode !== existing.employeeCode) {
       this.assertCustomCode(changes.employeeCode ?? undefined);
@@ -284,7 +309,33 @@ export class EmployeesService {
     );
     this.assertEmploymentDates({ ...existing, ...defined });
     await this.assertValidManager(id, changes.managerId);
+    const moved =
+      changes.departmentId != null &&
+      changes.departmentId !== existing.departmentId;
+    if (transferDate !== undefined && !moved) {
+      throw new BadRequestException(
+        'transferDate only applies with a new departmentId',
+      );
+    }
+    const movedOn = transferDate ?? today();
+    if (moved) {
+      if (movedOn > today()) {
+        throw new BadRequestException('transferDate cannot be in the future');
+      }
+      if (
+        movedOn < ((defined.hiredAt as string | undefined) ?? existing.hiredAt)
+      ) {
+        throw new BadRequestException('transferDate is before the hire date');
+      }
+    }
     const updated = await this.employeesRepository.update(id, changes);
+    if (moved) {
+      await this.employeesRepository.recordDepartment(
+        id,
+        changes.departmentId!,
+        movedOn,
+      );
+    }
     await this.audit.record({
       action: 'employee.updated',
       entityType: 'employee',

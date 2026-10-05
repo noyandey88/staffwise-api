@@ -111,8 +111,13 @@ export class WorkModeService {
     employee: { id: number; departmentId: number },
     date = today(),
   ) {
-    const candidates = await this.repository.candidatesFor(employee);
-    const arrangement = resolveArrangement(candidates, employee, date);
+    // The department they were in that day, not necessarily today's.
+    const onDay = {
+      id: employee.id,
+      departmentId: await this.employeesService.departmentOn(employee, date),
+    };
+    const candidates = await this.repository.candidatesFor(onDay);
+    const arrangement = resolveArrangement(candidates, onDay, date);
     const workingDay = (await this.calendarService.workingDays(date, date)) > 0;
     const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
     return {

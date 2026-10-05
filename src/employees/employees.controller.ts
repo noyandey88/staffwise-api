@@ -17,6 +17,7 @@ import {
   EmployeeDirectoryDto,
   EmployeeProfileDto,
   EmployeeResponseDto,
+  DepartmentHistoryEntryDto,
 } from './dto/employee-response.dto.js';
 import { EmployeeContactDto } from './dto/employee-contact.dto.js';
 import {
@@ -135,6 +136,22 @@ export class EmployeesController {
     @Query() query: ReportsQueryDto,
   ) {
     return await this.employeesService.reportsOf(id, query.all);
+  }
+
+  @Get('/:id/department-history')
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @ApiOperation({
+    summary: "An employee's department history",
+    description:
+      'Newest first; date-based rules use the department in force on each day.',
+  })
+  @ApiEnvelope(DepartmentHistoryEntryDto, {
+    message: 'Department history retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  async departmentHistory(@Param('id', ParseIntPipe) id: number) {
+    return await this.employeesService.departmentHistory(id);
   }
 
   @Get('/:id/managers')
