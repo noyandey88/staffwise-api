@@ -22,6 +22,7 @@ pnpm db:push            # push schema directly (no migration file)
 pnpm db:studio          # Drizzle Studio UI
 
 docker compose up -d postgres   # local DB; credentials/db name from POSTGRES_* in .env (must match DATABASE_URL)
+docker compose up -d mailpit    # local SMTP catcher (SMTP :1025, inbox UI http://localhost:8025)
 ```
 
 There are no automated tests (removed deliberately); verify changes with `pnpm typecheck`, `pnpm lint:check` and `pnpm build`.
@@ -50,6 +51,7 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 
 - `AuthModule` registers `JwtModule` as **global** via `registerAsync`, reading `JWT_SECRET` and `JWT_ACCESS_EXPIRES_IN` (seconds) from `ConfigService`; refresh tokens are persisted via `auth/refresh-token.repository.ts` (`refresh_tokens` table, SHA-256 digest of the raw token, unique-indexed) and their lifetime is `JWT_REFRESH_EXPIRES_IN` (seconds). `POST /auth/access-token/refresh` is public: it redeems a refresh token for a new access/refresh pair, revokes the presented one, and treats a second presentation as reuse (revokes every token for that user). Login sheds the user's revoked/expired rows.
 - Protect routes with `@Auth()` (`src/common/decorators/auth.decorator.ts`), which bundles `AuthGuard` + `RolesGuard`, the `access-token` Swagger bearer scheme, and the documented 401; the guard puts the JWT payload on `request.user`, accessed via `@CurrentUser()`. Restrict by role with `@Roles(UserRole.Admin)` (`roles.decorator.ts`), which `RolesGuard` enforces and which documents the 403.
+- Password links (`password_reset_tokens`, SHA-256 digest, one row per user, single use via an atomic `consume`): `POST /auth/password/forgot` (public, same response whether or not the email exists, 60 s per-user cooldown, no link for former staff) and new accounts (`purpose: setup`, `ACCOUNT_SETUP_EXPIRES_IN`) email `WEB_APP_URL/reset-password?token=…`; `POST /auth/password/reset` redeems it and revokes all refresh tokens. Register's `password` is optional (without it the account is unusable until the link is used).
 - Login answers unknown email and wrong password with the same 401. Register enforces password length 8–72 and normalizes email (trim + lower-case) on both register and login.
 
 ### HR domain
@@ -73,6 +75,11 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - `HealthModule` (`src/health/`) exposes `GET /health` via `@nestjs/terminus`, checking `DrizzleHealthIndicator` (runs `SELECT 1` through the injected `DRIZZLE_ORM` instance).
 - `ThrottlerGuard` is registered globally as `APP_GUARD` in `app.module.ts` (limits from `THROTTLE_TTL`/`THROTTLE_LIMIT`, converted to ms). Endpoints that must not be rate-limited (e.g. `/health`) need `@SkipThrottle()` from `@nestjs/throttler`.
 - Logging goes through `nestjs-pino` (`LoggerModule.forRootAsync` in `app.module.ts`, `app.useLogger(app.get(Logger))` in `bootstrap.ts`); `Authorization`/`Cookie` headers are redacted. **Never use `console.log`** — inject `Logger`/`PinoLogger` or use Nest's standard logger, which pino now backs.
+
+### Email
+
+- `MailModule` (`src/mail/`, `@Global()`): `MailService` wraps nodemailer (`MAIL_TRANSPORT=smtp` with `SMTP_*`/`MAIL_FROM`; the default `log` only logs, with bodies omitted in production). Templates in `mail.templates.ts` share one layout (plain text + escaped inline-styled HTML), branded from the company profile.
+- Inject `NotificationService` for domain emails. Event methods (`leaveSubmitted` → direct manager, `leaveDecided`, `correctionDecided`, `payslipsReleased` on run approval, `accountCreated`) are fire-and-forget: call them **after** the write succeeds and don't await; failures are logged, never thrown. Only `sendPasswordReset` is awaited.
 
 ### Response envelope (cross-cutting)
 

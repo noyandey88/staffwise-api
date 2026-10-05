@@ -3,9 +3,11 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
 import {
+  ForgotPasswordDto,
   LoginDto,
   RefreshTokenDto,
   RegisterDto,
+  ResetPasswordDto,
 } from './dto/registerUser.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import {
@@ -32,7 +34,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Register a new user',
     description:
-      'Admin/HR create a user account (role: employee). The user should change the initial password via PATCH /auth/password.',
+      'Admin/HR create a user account (role: employee). The user is emailed a link to set their own password; the optional password is only an initial one.',
   })
   @ApiEnvelope(UserResponseDto, { message: 'User registered successfully' })
   @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.CONFLICT)
@@ -90,6 +92,34 @@ export class AuthController {
       data.currentPassword,
       data.newPassword,
     );
+    return null;
+  }
+
+  @Post('password/forgot')
+  @ApiOperation({
+    summary: 'Request a password reset link',
+    description:
+      'Emails a one-time link to WEB_APP_URL/reset-password?token=…. The response is the same whether or not the email has an account.',
+  })
+  @ApiEnvelope(null, {
+    message: 'If an account exists for that email, a reset link has been sent',
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    await this.authService.forgotPassword(body.email);
+    return null;
+  }
+
+  @Post('password/reset')
+  @ApiOperation({
+    summary: 'Set a new password with an emailed link',
+    description:
+      'Redeems a reset or new-account link (one use). Revokes every refresh token.',
+  })
+  @ApiEnvelope(null, { message: 'Password has been set' })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.FORBIDDEN)
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    await this.authService.resetPassword(body.token, body.newPassword);
     return null;
   }
 

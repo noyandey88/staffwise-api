@@ -1,7 +1,9 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
@@ -30,10 +32,35 @@ export class RegisterDto {
   email!: string;
 
   /** 72 is bcrypt's input limit; longer passwords would be silently truncated. */
+  @ApiPropertyOptional({
+    description:
+      'Optional initial password. Either way the user is emailed a link to set their own.',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(72)
-  password!: string;
+  password?: string;
+}
+
+export class ForgotPasswordDto {
+  @normalizeEmail
+  @IsEmail()
+  @MaxLength(100)
+  email!: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  token!: string;
+
+  /** Same limits as RegisterDto (72 is bcrypt's input limit). */
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  newPassword!: string;
 }
 
 export class LoginDto {

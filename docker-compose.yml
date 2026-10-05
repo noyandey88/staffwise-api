@@ -16,6 +16,13 @@ services:
       timeout: 3s
       retries: 10
 
+  # Local SMTP catcher: SMTP on 1025, inbox UI on http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
   api:
     build: .
     profiles: ['full']

@@ -8,6 +8,7 @@ import { PayrollRepository } from './payroll.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
 import { CompanyService } from '../company/company.service.js';
 import { CalendarService } from '../calendar/calendar.service.js';
+import { NotificationService } from '../mail/notification.service.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
 
@@ -18,6 +19,7 @@ export class PayrollService {
     private readonly employeeService: EmployeesService,
     private readonly companyService: CompanyService,
     private readonly calendarService: CalendarService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async generate(month: string) {
@@ -27,8 +29,11 @@ export class PayrollService {
     );
   }
 
+  /** Approval releases the payslips, so employees are told they're ready. */
   async approve(approverUserId: number, runId: number) {
-    return await this.payrollRepository.approve(runId, approverUserId);
+    const run = await this.payrollRepository.approve(runId, approverUserId);
+    this.notifications.payslipsReleased(run.id, run.month);
+    return run;
   }
 
   async markPaid(runId: number) {

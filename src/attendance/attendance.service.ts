@@ -24,6 +24,7 @@ import {
   CreateAttendanceCorrectionDto,
 } from './dto/attendance-correction.dto.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
+import { NotificationService } from '../mail/notification.service.js';
 import { UserRole } from '../user/user.types.js';
 import { JwtPayload } from '../auth/auth.types.js';
 import { EmployeeStatus } from '../employees/employees.enum.js';
@@ -41,6 +42,7 @@ export class AttendanceService {
     private readonly attendanceRepository: AttendanceRepository,
     private readonly employeeService: EmployeesService,
     private readonly calendarService: CalendarService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async checkIn(userId: number) {
@@ -245,16 +247,23 @@ export class AttendanceService {
 
   async approveCorrection(requester: JwtPayload, id: number) {
     await this.assertCanReviewCorrection(requester, id);
-    return this.attendanceRepository.approveCorrection(
+    const approved = await this.attendanceRepository.approveCorrection(
       id,
       requester.sub,
       (checkInAt, checkOutAt) => this.assertValidShift(checkInAt, checkOutAt),
     );
+    this.notifications.correctionDecided(approved);
+    return approved;
   }
 
   async rejectCorrection(requester: JwtPayload, id: number) {
     await this.assertCanReviewCorrection(requester, id);
-    return this.attendanceRepository.rejectCorrection(id, requester.sub);
+    const rejected = await this.attendanceRepository.rejectCorrection(
+      id,
+      requester.sub,
+    );
+    this.notifications.correctionDecided(rejected);
+    return rejected;
   }
 
   /** Nobody reviews their own; managers only their reports. */

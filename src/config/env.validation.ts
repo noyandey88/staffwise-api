@@ -54,10 +54,39 @@ const envSchema = z
       .optional(),
     /** Only used when the super admin is first created; 72 is bcrypt's limit. */
     SUPER_ADMIN_PASSWORD: z.string().min(8).max(72).optional(),
+
+    /** 'log' writes emails to the log instead of sending (dev without SMTP). */
+    MAIL_TRANSPORT: z.enum(['log', 'smtp']).default('log'),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    /** true = implicit TLS (port 465); false = STARTTLS when offered. */
+    SMTP_SECURE: booleanString,
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASSWORD: z.string().min(1).optional(),
+    /** e.g. "Staffwise <no-reply@example.com>". */
+    MAIL_FROM: z.string().min(3).default('Staffwise <no-reply@localhost>'),
+    /** Front-end base URL used in email links (reset/setup password). */
+    WEB_APP_URL: z.url().default('http://localhost:5173'),
+    /** Forgot-password link lifetime in seconds. */
+    PASSWORD_RESET_EXPIRES_IN: z.coerce.number().int().positive().default(3600),
+    /** New-account "set your password" link lifetime in seconds. */
+    ACCOUNT_SETUP_EXPIRES_IN: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(259200),
   })
   .refine((env) => !env.SUPER_ADMIN_EMAIL === !env.SUPER_ADMIN_PASSWORD, {
     message: 'set both SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD, or neither',
     path: ['SUPER_ADMIN_PASSWORD'],
+  })
+  .refine((env) => env.MAIL_TRANSPORT !== 'smtp' || env.SMTP_HOST, {
+    message: 'SMTP_HOST is required when MAIL_TRANSPORT=smtp',
+    path: ['SMTP_HOST'],
+  })
+  .refine((env) => !env.SMTP_USER === !env.SMTP_PASSWORD, {
+    message: 'set both SMTP_USER and SMTP_PASSWORD, or neither',
+    path: ['SMTP_PASSWORD'],
   });
 
 export type Env = z.infer<typeof envSchema>;

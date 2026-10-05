@@ -20,6 +20,7 @@ import { UserRole } from '../user/user.types.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { today } from '../attendance/attendance.util.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
+import { NotificationService } from '../mail/notification.service.js';
 
 /** Roles that see and review every employee's leave. */
 const LEAVE_ADMIN_ROLES: readonly UserRole[] = [
@@ -34,6 +35,7 @@ export class LeaveService {
     private readonly leaveRepository: LeaveRepository,
     private readonly employeeService: EmployeesService,
     private readonly calendarService: CalendarService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // --- requests ---
@@ -74,13 +76,15 @@ export class LeaveService {
       }
     }
 
-    return await this.leaveRepository.create(employee.id, {
+    const request = await this.leaveRepository.create(employee.id, {
       leaveTypeId: type.id,
       startDate: dto.startDate,
       endDate: dto.endDate,
       days,
       reason: dto.reason,
     });
+    this.notifications.leaveSubmitted(request);
+    return request;
   }
 
   async findMine(userId: number) {
@@ -134,12 +138,22 @@ export class LeaveService {
 
   async approve(requester: JwtPayload, requestId: number) {
     await this.assertCanReview(requester, requestId);
-    return this.leaveRepository.approve(requestId, requester.sub);
+    const approved = await this.leaveRepository.approve(
+      requestId,
+      requester.sub,
+    );
+    this.notifications.leaveDecided(approved);
+    return approved;
   }
 
   async reject(requester: JwtPayload, requestId: number) {
     await this.assertCanReview(requester, requestId);
-    return this.leaveRepository.reject(requestId, requester.sub);
+    const rejected = await this.leaveRepository.reject(
+      requestId,
+      requester.sub,
+    );
+    this.notifications.leaveDecided(rejected);
+    return rejected;
   }
 
   /** Nobody reviews their own; managers only their reports. */

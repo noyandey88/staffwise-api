@@ -183,6 +183,13 @@
       "when": 1791180989707,
       "tag": "0025_fast_dragon_lord",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791181516364,
+      "tag": "0026_jittery_expediter",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,23 @@ import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 @Injectable()
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
-  async createUser(registerUserDto: RegisterDto) {
+  /** Without the password hash; undefined when no user has that email. */
+  async findByEmailOptional(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) return undefined;
+    const { password: _password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  /** Sets a password without checking the old one (reset/setup links). */
+  async setPassword(id: number, newPassword: string) {
+    await this.userRepository.updatePassword(
+      id,
+      await bcrypt.hash(newPassword, 10),
+    );
+  }
+
+  async createUser(registerUserDto: RegisterDto & { password: string }) {
     const existing = await this.userRepository.findByEmail(
       registerUserDto.email,
     );
