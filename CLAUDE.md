@@ -35,7 +35,7 @@ override values from that file. Token lifetimes are in **seconds**.
 
 ## Architecture
 
-Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `department`, `attendance`, `health`), each following **controller → service → repository**. Repositories are the only layer that touches the database.
+Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `department`, `attendance`, `leave`, `payroll`, `company`, `notice`, `health`), each following **controller → service → repository**. Repositories are the only layer that touches the database.
 
 ### Database (Drizzle)
 
@@ -60,6 +60,8 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - Attendance: one `attendance_records` row per employee per `work_date` (unique constraint; check-in uses `onConflictDoNothing` and maps an empty return to 409). `work_date` is a `YYYY-MM-DD` string computed in `ATTENDANCE_TIMEZONE` (`Asia/Dhaka`) by `attendance.util.ts`; month filters are half-open ranges from `monthRange()`. Lateness (`LATE_AFTER`), worked and overtime minutes (`STANDARD_WORK_MINUTES`) are computed in SQL at read time, not stored.
 - Accounts: `POST /auth/register` is admin/HR-only (no public signup); `PATCH /auth/password` revokes all refresh tokens. `UserService.assertCanSignIn` blocks login/refresh for `SIGN_IN_BLOCKED_STATUSES` (terminated/resigned/retired, in `employees.enum.ts`); a blocked refresh revokes all the user's tokens. Only `active` employees check in/out. `GET /users/me` joins the employee + department (`UserRepository.findProfile`).
 - Attendance visibility: Admin/HR see anyone; managers see themselves plus their (recursive) reports — enforced in `AttendanceService.assertCanView`, not by `@Roles` alone.
+- Notices (`src/notice/`): `department_id` null = company-wide; `published_at` in the future schedules, `expires_at` (exclusive) retires. `GET /notices` is the live feed — `NOTICE_MANAGER_ROLES` (super admin/admin/HR) see every department, everyone else company-wide + their own department (via their employee record). Non-managers get 404, not 403, for notices outside their feed. `GET /notices/all` (Admin/HR) includes scheduled and expired ones.
+- Birthdays: `employees.date_of_birth` is optional. `GET /employees/birthdays/upcoming?days=N` (default 30, max 366, any authenticated user) is raw SQL relative to `today()` in `ATTENDANCE_TIMEZONE`; it skips `SIGN_IN_BLOCKED_STATUSES`, celebrates Feb 29 on Feb 28 in non-leap years, and never returns the birth year.
 
 ### Health, rate limiting, logging
 

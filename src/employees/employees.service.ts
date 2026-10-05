@@ -6,6 +6,10 @@ import {
 import { EmployeesRepository } from './employees.repository.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
+import { SIGN_IN_BLOCKED_STATUSES } from './employees.enum.js';
+import { today } from '../attendance/attendance.util.js';
+
+const DEFAULT_BIRTHDAY_WINDOW_DAYS = 30;
 
 @Injectable()
 export class EmployeesService {
@@ -63,5 +67,14 @@ export class EmployeesService {
   async findReports(id: number) {
     await this.findById(id); // 404 if the manager doesn't exist
     return this.employeesRepository.findReports(id);
+  }
+
+  /** Former staff are left out; "today" is the attendance-timezone date. */
+  async upcomingBirthdays(days = DEFAULT_BIRTHDAY_WINDOW_DAYS) {
+    return this.employeesRepository.findUpcomingBirthdays(
+      today(),
+      days,
+      SIGN_IN_BLOCKED_STATUSES,
+    );
   }
 }

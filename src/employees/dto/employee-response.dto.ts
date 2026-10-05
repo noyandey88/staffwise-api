@@ -9,6 +9,7 @@ export class EmployeeResponseDto {
   jobTitle!: string;
   status!: EmployeeStatus;
   hiredAt!: string;
+  dateOfBirth!: string | null;
   createdAt!: Date | null;
   updatedAt!: Date | null;
 }

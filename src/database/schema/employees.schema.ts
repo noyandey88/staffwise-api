@@ -22,6 +22,7 @@ export const employees = pgTable('employees', {
   jobTitle: varchar('job_title', { length: 100 }).notNull(),
   status: employeesEnum('status').default(EmployeeStatus.Active).notNull(),
   hiredAt: date('hired_at').notNull(),
+  dateOfBirth: date('date_of_birth'),
   ...timestamps,
 });
 

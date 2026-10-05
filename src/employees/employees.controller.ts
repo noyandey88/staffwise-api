@@ -8,11 +8,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import { EmployeeResponseDto } from './dto/employee-response.dto.js';
+import { UpcomingBirthdaysQueryDto } from './dto/upcoming-birthdays-query.dto.js';
+import { UpcomingBirthdayResponseDto } from './dto/upcoming-birthday-response.dto.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
@@ -51,6 +54,23 @@ export class EmployeesController {
   })
   async findAll() {
     return await this.employeesService.findAll();
+  }
+
+  @Get('/birthdays/upcoming')
+  @ApiOperation({
+    summary: 'Upcoming birthdays',
+    description:
+      'Current employees whose birthday falls within the next `days` days ' +
+      '(today included), soonest first. Employees without a date of birth ' +
+      'are skipped; the birth year is not exposed.',
+  })
+  @ApiEnvelope(UpcomingBirthdayResponseDto, {
+    message: 'Upcoming birthdays retrieved successfully',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  async upcomingBirthdays(@Query() query: UpcomingBirthdaysQueryDto) {
+    return await this.employeesService.upcomingBirthdays(query.days);
   }
 
   @Get('/get/:id')

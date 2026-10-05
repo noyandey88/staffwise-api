@@ -29,4 +29,8 @@ export class CreateEmployeeDto {
 
   @IsDateString()
   hiredAt!: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
 }
