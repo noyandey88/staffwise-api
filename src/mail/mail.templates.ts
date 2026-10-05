@@ -142,6 +142,27 @@ export const templates = {
       },
     ),
 
+  certificateDecided: (
+    r: Recipient,
+    brand: Brand,
+    c: { purpose: string; referenceNo: string | null; issued: boolean },
+  ) =>
+    render(
+      r.email,
+      c.issued
+        ? `Your salary certificate ${c.referenceNo} is ready`
+        : 'Your salary certificate request was declined',
+      brand,
+      {
+        greeting: `Hi ${r.firstName},`,
+        paragraphs: [
+          c.issued
+            ? `Your salary certificate for "${c.purpose}" has been issued (ref. ${c.referenceNo}). Download it from ${brand.name}.`
+            : `Your salary certificate request for "${c.purpose}" was declined. Contact HR if you have questions.`,
+        ],
+      },
+    ),
+
   payslipReady: (r: Recipient, brand: Brand, month: string) =>
     render(r.email, `Your payslip for ${month} is ready`, brand, {
       greeting: `Hi ${r.firstName},`,

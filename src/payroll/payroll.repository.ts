@@ -16,6 +16,8 @@ import {
 } from '../database/schema/payroll.schema.js';
 import { leaveRequests, leaveTypes } from '../database/schema/leave.schema.js';
 import { employees } from '../database/schema/employees.schema.js';
+import { users } from '../database/schema/user.schema.js';
+import { departments } from '../database/schema/departments.schema.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { monthRange } from '../attendance/attendance.util.js';
 import { holidays } from '../database/schema/holiday.schema.js';
@@ -214,6 +216,30 @@ export class PayrollRepository {
       where: eq(payslips.payrollRunId, runId),
       orderBy: asc(payslips.employeeId),
     });
+  }
+
+  /** A payslip with its run and the employee's details, for the PDF. */
+  async findPayslipDetail(id: number) {
+    const [row] = await this.db
+      .select({
+        payslip: payslips,
+        run: payrollRuns,
+        employee: {
+          userId: employees.userId,
+          employeeCode: employees.employeeCode,
+          jobTitle: employees.jobTitle,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          departmentName: departments.name,
+        },
+      })
+      .from(payslips)
+      .innerJoin(payrollRuns, eq(payrollRuns.id, payslips.payrollRunId))
+      .innerJoin(employees, eq(employees.id, payslips.employeeId))
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(eq(payslips.id, id));
+    return row;
   }
 
   /** Released payslips only: drafts can still change before approval. */

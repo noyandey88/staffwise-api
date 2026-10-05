@@ -24,6 +24,7 @@ import { PayrollRunResponseDto } from './dto/payroll-run-response.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { PayslipResponseDto } from './dto/payslip-response.dto.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
+import { type JwtPayload } from '../auth/auth.types.js';
 
 @Auth()
 @ApiTags('Payroll')
@@ -89,6 +90,25 @@ export class PayrollController {
   @ApiErrorResponses(HttpStatus.NOT_FOUND)
   async payslipsForRun(@Param('id', ParseIntPipe) id: number) {
     return this.payrollService.payslipsForRun(id);
+  }
+
+  @Get('/payslips/:id/pdf')
+  @ApiOperation({
+    summary: 'Download a payslip as PDF',
+    description:
+      'Admin/HR: any payslip. Employees: their own from approved or paid runs.',
+  })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({
+    description: 'PDF attachment (not wrapped in the response envelope)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  payslipPdf(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.payrollService.payslipPdf(user, id);
   }
 
   @Get('/payslips/me')

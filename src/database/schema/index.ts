@@ -9,3 +9,4 @@ export * from './company.schema.js';
 export * from './notice.schema.js';
 export * from './holiday.schema.js';
 export * from './password-reset-token.schema.js';
+export * from './salary-certificate.schema.js';

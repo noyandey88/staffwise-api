@@ -21,6 +21,9 @@ export const companyProfile = pgTable(
     website: varchar('website', { length: 255 }),
     address: varchar('address', { length: 255 }),
     taxId: varchar('tax_id', { length: 50 }),
+    /** Signs issued documents (salary certificates). */
+    signatoryName: varchar('signatory_name', { length: 100 }),
+    signatoryTitle: varchar('signatory_title', { length: 100 }),
     currency: char('currency', { length: 3 }).default('BDT').notNull(),
     /** Days of week off (0 = Sunday … 6 = Saturday, as Postgres `dow`). */
     weekendDays: integer('weekend_days')

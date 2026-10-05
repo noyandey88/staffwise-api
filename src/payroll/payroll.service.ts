@@ -9,6 +9,9 @@ import { EmployeesService } from '../employees/employees.service.js';
 import { CompanyService } from '../company/company.service.js';
 import { CalendarService } from '../calendar/calendar.service.js';
 import { NotificationService } from '../mail/notification.service.js';
+import { renderPayslipPdf } from './payslip.pdf.js';
+import { type JwtPayload } from '../auth/auth.types.js';
+import { UserRole } from '../user/user.types.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
 
@@ -100,6 +103,35 @@ export class PayrollService {
     return new StreamableFile(Buffer.from(csv, 'utf8'), {
       type: 'text/csv; charset=utf-8',
       disposition: `attachment; filename="payroll-${period}-run-${run.id}.csv"`,
+    });
+  }
+
+  /**
+   * Admin/HR: any payslip. Employees: their own, once the run is approved
+   * (drafts can still change). Others get 404, not 403.
+   */
+  async payslipPdf(requester: JwtPayload, payslipId: number) {
+    const detail = await this.payrollRepository.findPayslipDetail(payslipId);
+    const isAdmin = [UserRole.SuperAdmin, UserRole.Admin, UserRole.Hr].includes(
+      requester.role,
+    );
+    if (
+      !detail ||
+      (!isAdmin &&
+        (detail.employee.userId !== requester.sub ||
+          detail.run.status === 'draft'))
+    ) {
+      throw new NotFoundException(`Payslip with id ${payslipId} not found`);
+    }
+
+    const pdf = await renderPayslipPdf({
+      company: await this.companyService.findOptional(),
+      ...detail,
+    });
+    const period = detail.run.month.slice(0, 7);
+    return new StreamableFile(pdf, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="payslip-${period}-${detail.employee.employeeCode}.pdf"`,
     });
   }
 

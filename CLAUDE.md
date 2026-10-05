@@ -76,6 +76,13 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - `ThrottlerGuard` is registered globally as `APP_GUARD` in `app.module.ts` (limits from `THROTTLE_TTL`/`THROTTLE_LIMIT`, converted to ms). Endpoints that must not be rate-limited (e.g. `/health`) need `@SkipThrottle()` from `@nestjs/throttler`.
 - Logging goes through `nestjs-pino` (`LoggerModule.forRootAsync` in `app.module.ts`, `app.useLogger(app.get(Logger))` in `bootstrap.ts`); `Authorization`/`Cookie` headers are redacted. **Never use `console.log`** — inject `Logger`/`PinoLogger` or use Nest's standard logger, which pino now backs.
 
+### Documents (PDF)
+
+- `src/common/pdf/`: `renderPdf()` builds an A4 PDF in memory with pdfkit (built-in Helvetica, so Latin text only); `letterhead()`, `details()`, `amountTable()`, `paragraph()` give every document the company letterhead and layout. `money.util.ts` formats amounts (lakh/crore grouping and words for BDT/INR) — amounts stay decimal strings, never floats.
+- PDFs are returned as `StreamableFile` (passed through the envelope unwrapped), documented with `@ApiProduces` + `@ApiOkResponse` binary schema. Unauthorized viewers get 404, not 403.
+- Payslip PDF: `GET /payroll/payslips/:id/pdf` (Admin/HR any; employees their own once the run is approved/paid).
+- Salary certificates (`src/certificate/`, `salary_certificates`): employee requests (one open at a time) → Admin/HR issue or reject; HR can also issue directly; nobody issues their own. Issuing requires a company profile, a current employee and a salary in effect today, and freezes everything printed into `snapshot` (jsonb) with a `SC-<year>-NNNN` reference from `salary_certificate_ref_seq`, so re-downloads never change. Signature block uses `company_profile.signatory_name/title`.
+
 ### Email
 
 - `MailModule` (`src/mail/`, `@Global()`): `MailService` wraps nodemailer (`MAIL_TRANSPORT=smtp` with `SMTP_*`/`MAIL_FROM`; the default `log` only logs, with bodies omitted in production). Templates in `mail.templates.ts` share one layout (plain text + escaped inline-styled HTML), branded from the company profile.

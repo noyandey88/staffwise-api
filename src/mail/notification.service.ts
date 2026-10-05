@@ -117,6 +117,27 @@ export class NotificationService {
     });
   }
 
+  certificateDecided(certificate: {
+    employeeId: number;
+    purpose: string;
+    referenceNo: string | null;
+    status: string;
+  }) {
+    this.background('certificate decided', async () => {
+      const who = await this.repository.employeeWithManager(
+        certificate.employeeId,
+      );
+      if (!who) return [];
+      return [
+        templates.certificateDecided(who, await this.brand(), {
+          purpose: certificate.purpose,
+          referenceNo: certificate.referenceNo,
+          issued: certificate.status === 'issued',
+        }),
+      ];
+    });
+  }
+
   /** month: YYYY-MM-DD (first of month) as stored on payroll_runs. */
   payslipsReleased(runId: number, month: string) {
     this.background('payslips released', async () => {

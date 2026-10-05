@@ -36,6 +36,12 @@ export class CompanyResponseDto extends BrandingResponseDto {
   @ApiProperty({ nullable: true, type: String })
   taxId!: string | null;
 
+  @ApiProperty({ nullable: true, type: String })
+  signatoryName!: string | null;
+
+  @ApiProperty({ nullable: true, type: String })
+  signatoryTitle!: string | null;
+
   @ApiProperty({ example: 'BDT' })
   currency!: string;
 

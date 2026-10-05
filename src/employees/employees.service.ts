@@ -94,6 +94,14 @@ export class EmployeesService {
     throw new ForbiddenException("You cannot view this employee's profile");
   }
 
+  /** Full profile without an access check; for documents issued by HR. */
+  async profileForDocument(id: number) {
+    const profile = await this.employeesRepository.findProfile(id);
+    if (!profile)
+      throw new NotFoundException(`Employee with id ${id} not found`);
+    return profile;
+  }
+
   async myProfile(userId: number) {
     const employee = await this.findByUserId(userId);
     return (await this.employeesRepository.findProfile(employee.id))!;

@@ -46,6 +46,8 @@ export class CompanyService {
       website: dto.website ?? null,
       address: dto.address ?? null,
       taxId: dto.taxId ?? null,
+      signatoryName: dto.signatoryName ?? null,
+      signatoryTitle: dto.signatoryTitle ?? null,
       currency: dto.currency ?? 'BDT',
       weekendDays: [...(dto.weekendDays ?? DEFAULT_WEEKEND_DAYS)].sort(),
     });
