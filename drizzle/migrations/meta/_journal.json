@@ -176,6 +176,13 @@
       "when": 1791180237325,
       "tag": "0024_charming_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791180989707,
+      "tag": "0025_fast_dragon_lord",
+      "breakpoints": true
     }
   ]
 }

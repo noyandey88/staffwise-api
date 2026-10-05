@@ -5,17 +5,8 @@ import * as schema from '../database/schema/index.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { users } from '../database/schema/user.schema.js';
 import { departments } from '../database/schema/departments.schema.js';
-import {
-  and,
-  asc,
-  count,
-  eq,
-  getTableColumns,
-  ilike,
-  or,
-  sql,
-  type SQL,
-} from 'drizzle-orm';
+import { and, asc, count, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
   likePattern,
   type PageWindow,
@@ -32,6 +23,26 @@ export interface ReportRow {
   depth: number;
   [key: string]: unknown;
 }
+
+/** Columns any signed-in user may see (no personal details). */
+const directoryColumns = {
+  id: employees.id,
+  employeeCode: employees.employeeCode,
+  userId: employees.userId,
+  firstName: users.firstName,
+  lastName: users.lastName,
+  email: users.email,
+  jobTitle: employees.jobTitle,
+  departmentId: employees.departmentId,
+  departmentName: departments.name,
+  managerId: employees.managerId,
+  status: employees.status,
+  employmentType: employees.employmentType,
+  hiredAt: employees.hiredAt,
+};
+
+const managers = alias(employees, 'managers');
+const managerUsers = alias(users, 'manager_users');
 
 export interface EmployeeListFilter {
   search?: string;
@@ -93,13 +104,7 @@ export class EmployeesRepository {
 
     const [items, [{ total }]] = await Promise.all([
       this.db
-        .select({
-          ...getTableColumns(employees),
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          departmentName: departments.name,
-        })
+        .select(directoryColumns)
         .from(employees)
         .innerJoin(users, eq(users.id, employees.userId))
         .innerJoin(departments, eq(departments.id, employees.departmentId))
@@ -114,6 +119,40 @@ export class EmployeesRepository {
         .where(where),
     ]);
     return { items, total };
+  }
+
+  async findDirectoryEntry(id: number) {
+    const [row] = await this.db
+      .select(directoryColumns)
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .where(eq(employees.id, id));
+    return row;
+  }
+
+  /** The full row with the employee's, department's and manager's names. */
+  async findProfile(id: number) {
+    const [row] = await this.db
+      .select({
+        employee: employees,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        departmentName: departments.name,
+        managerName: sql<
+          string | null
+        >`${managerUsers.firstName} || ' ' || ${managerUsers.lastName}`,
+      })
+      .from(employees)
+      .innerJoin(users, eq(users.id, employees.userId))
+      .innerJoin(departments, eq(departments.id, employees.departmentId))
+      .leftJoin(managers, eq(managers.id, employees.managerId))
+      .leftJoin(managerUsers, eq(managerUsers.id, managers.userId))
+      .where(eq(employees.id, id));
+    if (!row) return undefined;
+    const { employee, ...names } = row;
+    return { ...employee, ...names };
   }
 
   async findById(id: number): Promise<Employee | undefined> {

@@ -14,9 +14,13 @@ import { EmployeesService } from './employees.service.js';
 import { CreateEmployeeDto } from './dto/create-employee.dto.js';
 import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import {
-  EmployeeListItemDto,
+  EmployeeDirectoryDto,
+  EmployeeProfileDto,
   EmployeeResponseDto,
 } from './dto/employee-response.dto.js';
+import { EmployeeContactDto } from './dto/employee-contact.dto.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { type JwtPayload } from '../auth/auth.types.js';
 import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
 import { UpcomingBirthdaysQueryDto } from './dto/upcoming-birthdays-query.dto.js';
 import { UpcomingBirthdayResponseDto } from './dto/upcoming-birthday-response.dto.js';
@@ -42,7 +46,7 @@ export class EmployeesController {
   @ApiEnvelope(EmployeeResponseDto, {
     message: 'Employee created successfully',
   })
-  @ApiErrorResponses(HttpStatus.BAD_REQUEST)
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.CONFLICT)
   async create(@Body() data: CreateEmployeeDto) {
     return await this.employeesService.create(data);
   }
@@ -51,9 +55,10 @@ export class EmployeesController {
   @ApiOperation({
     summary: 'List employees',
     description:
-      'Paginated, sorted by name; filter by search text, department, manager or status.',
+      'Directory entries (no personal details), paginated and sorted by name; ' +
+      'filter by search text, department, manager or status.',
   })
-  @ApiEnvelope(EmployeeListItemDto, {
+  @ApiEnvelope(EmployeeDirectoryDto, {
     message: 'Employees retrieved successfully',
     paginated: true,
   })
@@ -82,13 +87,60 @@ export class EmployeesController {
   @Get('/get/:id')
   @ApiOperation({
     summary: 'Retrieve an employee by ID',
-    description: 'Fetches an employee by their ID.',
+    description:
+      'Directory entry (no personal details); see /employees/:id/profile.',
   })
-  @ApiEnvelope(EmployeeResponseDto, {
+  @ApiEnvelope(EmployeeDirectoryDto, {
     message: 'Employee retrieved successfully',
   })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
   async findById(@Param('id', ParseIntPipe) id: number) {
-    return await this.employeesService.findById(id);
+    return await this.employeesService.findDirectoryEntry(id);
+  }
+
+  @Get('/me/profile')
+  @ApiOperation({ summary: 'My full employee profile' })
+  @ApiEnvelope(EmployeeProfileDto, {
+    message: 'Profile retrieved successfully',
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  async myProfile(@CurrentUser('sub') userId: number) {
+    return await this.employeesService.myProfile(userId);
+  }
+
+  @Patch('/me/profile')
+  @ApiOperation({
+    summary: 'Update my contact details',
+    description:
+      'Phone, addresses, blood group and emergency contact; null clears a field. ' +
+      'Other fields are maintained by HR.',
+  })
+  @ApiEnvelope(EmployeeProfileDto, {
+    message: 'Profile updated successfully',
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  async updateMyProfile(
+    @CurrentUser('sub') userId: number,
+    @Body() dto: EmployeeContactDto,
+  ) {
+    return await this.employeesService.updateMyProfile(userId, dto);
+  }
+
+  @Get('/:id/profile')
+  @ApiOperation({
+    summary: "An employee's full profile",
+    description:
+      'Admin/HR: anyone. Others: themselves; managers also their (recursive) reports.',
+  })
+  @ApiEnvelope(EmployeeProfileDto, {
+    message: 'Profile retrieved successfully',
+  })
+  @ApiErrorResponses(HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND)
+  async profile(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return await this.employeesService.findProfile(user, id);
   }
 
   @Patch('/update')
@@ -100,6 +152,11 @@ export class EmployeesController {
   @ApiEnvelope(EmployeeResponseDto, {
     message: 'Employee updated successfully',
   })
+  @ApiErrorResponses(
+    HttpStatus.BAD_REQUEST,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.CONFLICT,
+  )
   async update(@Body() data: UpdateEmployeeDto) {
     return await this.employeesService.update(data);
   }

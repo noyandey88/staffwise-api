@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +11,16 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { SIGN_IN_BLOCKED_STATUSES } from './employees.enum.js';
+import { EmployeeContactDto } from './dto/employee-contact.dto.js';
+import { type JwtPayload } from '../auth/auth.types.js';
+import { UserRole } from '../user/user.types.js';
+
+/** Roles that see every employee's full profile. */
+const PROFILE_ADMIN_ROLES: readonly UserRole[] = [
+  UserRole.SuperAdmin,
+  UserRole.Admin,
+  UserRole.Hr,
+];
 import { today } from '../attendance/attendance.util.js';
 
 const DEFAULT_BIRTHDAY_WINDOW_DAYS = 30;
@@ -16,6 +28,15 @@ const DEFAULT_BIRTHDAY_WINDOW_DAYS = 30;
 @Injectable()
 export class EmployeesService {
   constructor(private readonly employeesRepository: EmployeesRepository) {}
+
+  /** EMP-NNNNN is reserved for generated codes, so HR's own can never collide later. */
+  private assertCustomCode(code: string | undefined) {
+    if (code && /^EMP-\d+$/i.test(code)) {
+      throw new BadRequestException(
+        'employeeCode EMP-<number> is reserved for generated codes',
+      );
+    }
+  }
 
   async create(data: CreateEmployeeDto) {
     const existing = await this.employeesRepository.findByUserId(data.userId);
@@ -26,6 +47,8 @@ export class EmployeesService {
       );
     }
 
+    this.assertCustomCode(data.employeeCode);
+    this.assertEmploymentDates(data);
     const employee = await this.employeesRepository.create(data);
     return employee;
   }
@@ -46,6 +69,69 @@ export class EmployeesService {
       window,
     );
     return paginated(items, total, window);
+  }
+
+  /** Directory view of a colleague: no personal details. */
+  async findDirectoryEntry(id: number) {
+    const entry = await this.employeesRepository.findDirectoryEntry(id);
+    if (!entry) throw new NotFoundException(`Employee with id ${id} not found`);
+    return entry;
+  }
+
+  /** Full profile: Admin/HR any; others themselves; managers their reports. */
+  async findProfile(requester: JwtPayload, id: number) {
+    const profile = await this.employeesRepository.findProfile(id);
+    if (!profile)
+      throw new NotFoundException(`Employee with id ${id} not found`);
+    if (PROFILE_ADMIN_ROLES.includes(requester.role)) return profile;
+
+    const me = await this.employeesRepository.findByUserId(requester.sub);
+    if (me?.id === id) return profile;
+    if (requester.role === UserRole.Manager && me) {
+      const reports = await this.employeesRepository.findReports(me.id);
+      if (reports.some((r) => r.id === id)) return profile;
+    }
+    throw new ForbiddenException("You cannot view this employee's profile");
+  }
+
+  async myProfile(userId: number) {
+    const employee = await this.findByUserId(userId);
+    return (await this.employeesRepository.findProfile(employee.id))!;
+  }
+
+  /** Self-service: contact details only (see EmployeeContactDto). */
+  async updateMyProfile(userId: number, dto: EmployeeContactDto) {
+    const employee = await this.findByUserId(userId);
+    const changes = {
+      phone: dto.phone,
+      presentAddress: dto.presentAddress,
+      permanentAddress: dto.permanentAddress,
+      bloodGroup: dto.bloodGroup,
+      emergencyContactName: dto.emergencyContactName,
+      emergencyContactRelationship: dto.emergencyContactRelationship,
+      emergencyContactPhone: dto.emergencyContactPhone,
+    };
+    if (Object.values(changes).some((v) => v !== undefined)) {
+      await this.employeesRepository.update(employee.id, changes);
+    }
+    return (await this.employeesRepository.findProfile(employee.id))!;
+  }
+
+  private assertEmploymentDates(e: {
+    hiredAt: string;
+    probationEndDate?: string | null;
+    contractEndDate?: string | null;
+    dateOfBirth?: string | null;
+  }) {
+    if (e.probationEndDate && e.probationEndDate < e.hiredAt) {
+      throw new BadRequestException('probationEndDate is before hiredAt');
+    }
+    if (e.contractEndDate && e.contractEndDate < e.hiredAt) {
+      throw new BadRequestException('contractEndDate is before hiredAt');
+    }
+    if (e.dateOfBirth && e.dateOfBirth >= e.hiredAt) {
+      throw new BadRequestException('dateOfBirth must be before hiredAt');
+    }
   }
 
   async findById(id: number) {
@@ -76,7 +162,15 @@ export class EmployeesService {
   async update(data: UpdateEmployeeDto) {
     // id is an identity column (GENERATED ALWAYS), so it must not be in the SET clause
     const { id, ...changes } = data;
-    await this.findById(id);
+    const existing = await this.findById(id);
+    if (changes.employeeCode !== existing.employeeCode) {
+      this.assertCustomCode(changes.employeeCode ?? undefined);
+    }
+    // DTO instances may carry undefined for omitted fields; keep existing ones.
+    const defined = Object.fromEntries(
+      Object.entries(changes).filter(([, v]) => v !== undefined),
+    );
+    this.assertEmploymentDates({ ...existing, ...defined });
     return await this.employeesRepository.update(id, changes);
   }
 
