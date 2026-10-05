@@ -6,6 +6,12 @@ export class AttendanceRecordResponseDto {
   workDate!: string;
   checkInAt!: Date;
   checkOutAt!: Date | null;
+  @ApiProperty({ nullable: true, enum: ['office', 'remote'] })
+  workLocation!: 'office' | 'remote' | null;
+  @ApiProperty({
+    description: 'Remote on an expected office day without approval',
+  })
+  outsideArrangement!: boolean;
   workedMinutes!: number | null;
   isLate!: boolean;
   overtimeMinutes!: number | null;
@@ -55,6 +61,9 @@ export class AttendanceDayDto {
 
   @ApiProperty({ nullable: true, type: Date })
   checkOutAt!: Date | null;
+
+  @ApiProperty({ nullable: true, enum: ['office', 'remote'] })
+  workLocation!: 'office' | 'remote' | null;
 
   @ApiProperty({ nullable: true, type: Number })
   workedMinutes!: number | null;

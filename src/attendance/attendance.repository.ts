@@ -40,6 +40,7 @@ import {
   isLateSql,
   standardMinutesSql,
 } from '../attendance-policy/policy.sql.js';
+import { WorkLocation } from './dto/check-in.dto.js';
 
 /**
  * The day-status CASE shared by the day-by-day view and the attendance
@@ -74,6 +75,7 @@ export interface AttendanceDayRow {
   holidayName: string | null;
   checkInAt: Date | null;
   checkOutAt: Date | null;
+  workLocation: WorkLocation | null;
   workedMinutes: number | null;
   [key: string]: unknown;
 }
@@ -90,10 +92,21 @@ export class AttendanceRepository {
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async checkIn(employeeId: number, workDate: string) {
+  async checkIn(
+    employeeId: number,
+    workDate: string,
+    workLocation: WorkLocation,
+    outsideArrangement: boolean,
+  ) {
     const [row] = await this.db
       .insert(attendanceRecords)
-      .values({ employeeId, workDate, checkInAt: new Date() })
+      .values({
+        employeeId,
+        workDate,
+        checkInAt: new Date(),
+        workLocation,
+        outsideArrangement,
+      })
       .onConflictDoNothing()
       .returning();
 
@@ -210,6 +223,7 @@ export class AttendanceRepository {
         h.name AS "holidayName",
         a.check_in_at AS "checkInAt",
         a.check_out_at AS "checkOutAt",
+        a.work_location AS "workLocation",
         floor(extract(epoch FROM (a.check_out_at - a.check_in_at)) / 60)::int AS "workedMinutes"
       FROM generate_series(${start}::date, ${end}::date - 1, interval '1 day') AS g(ts)
       CROSS JOIN LATERAL (SELECT g.ts::date AS day) d

@@ -3,9 +3,10 @@ import { AttendanceService } from './attendance.service.js';
 import { AttendanceController } from './attendance.controller.js';
 import { EmployeesModule } from '../employees/employees.module.js';
 import { AttendanceRepository } from './attendance.repository.js';
+import { WorkModeModule } from '../work-mode/work-mode.module.js';
 
 @Module({
-  imports: [EmployeesModule],
+  imports: [EmployeesModule, WorkModeModule],
   controllers: [AttendanceController],
   providers: [AttendanceService, AttendanceRepository],
 })

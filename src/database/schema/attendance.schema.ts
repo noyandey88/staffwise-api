@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   date,
   index,
   integer,
@@ -13,6 +14,8 @@ import {
 import { employees } from './employees.schema.js';
 import { users } from './user.schema.js';
 import { timestamps } from './common.schema.js';
+
+export const workLocationEnum = pgEnum('work_location', ['office', 'remote']);
 
 export const attendanceRecords = pgTable(
   'attendance_records',
@@ -30,6 +33,10 @@ export const attendanceRecords = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    /** Where they worked; null on records from before work modes. */
+    workLocation: workLocationEnum('work_location'),
+    /** Remote on an expected office day without approval (policy: flag). */
+    outsideArrangement: boolean('outside_arrangement').default(false).notNull(),
     ...timestamps,
   },
   (t) => [

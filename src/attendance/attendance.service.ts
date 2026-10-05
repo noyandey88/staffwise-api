@@ -25,6 +25,9 @@ import { UserRole } from '../user/user.types.js';
 import { JwtPayload } from '../auth/auth.types.js';
 import { EmployeeStatus } from '../employees/employees.enum.js';
 import { AuditService } from '../audit/audit.service.js';
+import { CheckInDto } from './dto/check-in.dto.js';
+import { WorkModeService } from '../work-mode/work-mode.service.js';
+import { RemoteWorkService } from '../work-mode/remote-work.service.js';
 
 /** Roles that see and review every employee's attendance. */
 const ATTENDANCE_ADMIN_ROLES: readonly UserRole[] = [
@@ -40,14 +43,41 @@ export class AttendanceService {
     private readonly employeeService: EmployeesService,
     private readonly notifications: NotificationService,
     private readonly policy: AttendancePolicyService,
+    private readonly workModeService: WorkModeService,
+    private readonly remoteWorkService: RemoteWorkService,
     private readonly audit: AuditService,
   ) {}
 
-  async checkIn(userId: number) {
+  /**
+   * Records where they work today. Remote on a day the arrangement expects
+   * the office needs an approved remote-work request; without one the
+   * attendance policy blocks it or records it flagged.
+   */
+  async checkIn(userId: number, dto: CheckInDto = {}) {
     const employee = await this.findActiveEmployee(userId);
+    const date = today();
+    const arrangement = await this.workModeService.resolve(employee, date);
+    const location =
+      dto.location ??
+      (arrangement.expectedInOffice === false ? 'remote' : 'office');
+
+    let outsideArrangement = false;
+    if (location === 'remote' && arrangement.expectedInOffice === true) {
+      if (!(await this.remoteWorkService.approvedOn(employee.id, date))) {
+        if (this.policy.rules().unapprovedRemoteCheckIn === 'block') {
+          throw new ForbiddenException(
+            'You are expected in the office today; request remote work first',
+          );
+        }
+        outsideArrangement = true;
+      }
+    }
+
     const record = await this.attendanceRepository.checkIn(
       employee.id,
-      today(),
+      date,
+      location,
+      outsideArrangement,
     );
 
     if (!record) {

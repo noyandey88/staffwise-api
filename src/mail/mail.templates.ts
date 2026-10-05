@@ -187,6 +187,36 @@ export const templates = {
       },
     ),
 
+  remoteWorkSubmitted: (
+    manager: Recipient,
+    brand: Brand,
+    w: { employeeName: string; start: string; end: string; reason: string },
+  ) =>
+    render(manager.email, `Remote-work request from ${w.employeeName}`, brand, {
+      greeting: `Hi ${manager.firstName},`,
+      paragraphs: [
+        `${w.employeeName} asked to work remotely from ${w.start} to ${w.end}: "${w.reason}".`,
+        'Review it in the pending remote-work requests.',
+      ],
+    }),
+
+  remoteWorkDecided: (
+    r: Recipient,
+    brand: Brand,
+    w: { start: string; end: string; approved: boolean },
+  ) =>
+    render(
+      r.email,
+      `Your remote-work request was ${w.approved ? 'approved' : 'rejected'}`,
+      brand,
+      {
+        greeting: `Hi ${r.firstName},`,
+        paragraphs: [
+          `Your request to work remotely from ${w.start} to ${w.end} was ${w.approved ? 'approved' : 'rejected'}.`,
+        ],
+      },
+    ),
+
   payslipReady: (r: Recipient, brand: Brand, month: string) =>
     render(r.email, `Your payslip for ${month} is ready`, brand, {
       greeting: `Hi ${r.firstName},`,
