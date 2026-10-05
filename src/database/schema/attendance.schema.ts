@@ -14,6 +14,7 @@ import {
 import { employees } from './employees.schema.js';
 import { users } from './user.schema.js';
 import { timestamps } from './common.schema.js';
+import { offices } from './office.schema.js';
 
 export const workLocationEnum = pgEnum('work_location', ['office', 'remote']);
 
@@ -35,6 +36,10 @@ export const attendanceRecords = pgTable(
     }),
     /** Where they worked; null on records from before work modes. */
     workLocation: workLocationEnum('work_location'),
+    /** Office an office check-in was verified against (if verification is on). */
+    officeId: integer('office_id').references(() => offices.id),
+    /** 'ip' or 'location' when the office check-in was verified. */
+    verifiedBy: varchar('verified_by', { length: 10 }),
     /** Remote on an expected office day without approval (policy: flag). */
     outsideArrangement: boolean('outside_arrangement').default(false).notNull(),
     ...timestamps,

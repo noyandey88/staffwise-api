@@ -95,18 +95,16 @@ export class AttendanceRepository {
   async checkIn(
     employeeId: number,
     workDate: string,
-    workLocation: WorkLocation,
-    outsideArrangement: boolean,
+    where: {
+      workLocation: WorkLocation;
+      outsideArrangement: boolean;
+      officeId: number | null;
+      verifiedBy: 'ip' | 'location' | null;
+    },
   ) {
     const [row] = await this.db
       .insert(attendanceRecords)
-      .values({
-        employeeId,
-        workDate,
-        checkInAt: new Date(),
-        workLocation,
-        outsideArrangement,
-      })
+      .values({ employeeId, workDate, checkInAt: new Date(), ...where })
       .onConflictDoNothing()
       .returning();
 

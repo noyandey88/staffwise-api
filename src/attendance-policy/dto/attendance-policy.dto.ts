@@ -10,9 +10,13 @@ import {
   IsIn,
 } from 'class-validator';
 import { IsDateOnly } from '../../common/decorators/is-date-only.decorator.js';
-import { unapprovedRemoteCheckInEnum } from '../../database/schema/attendance-policy.schema.js';
+import {
+  unapprovedRemoteCheckInEnum,
+  officeVerificationEnum,
+} from '../../database/schema/attendance-policy.schema.js';
 
 const REMOTE = unapprovedRemoteCheckInEnum.enumValues;
+const VERIFY = officeVerificationEnum.enumValues;
 
 /** Omitted fields are copied from the policy in force on effectiveFrom. */
 export class CreateAttendancePolicyDto {
@@ -88,6 +92,16 @@ export class CreateAttendancePolicyDto {
   @IsOptional()
   @IsIn(REMOTE)
   unapprovedRemoteCheckIn?: (typeof REMOTE)[number];
+
+  @ApiPropertyOptional({
+    enum: VERIFY,
+    description:
+      'Prove office check-ins against /offices: by network (ip), by coordinates ' +
+      '(location), either, or not at all',
+  })
+  @IsOptional()
+  @IsIn(VERIFY)
+  officeCheckInVerification?: (typeof VERIFY)[number];
 }
 
 export class AttendancePolicyResponseDto {
@@ -110,6 +124,8 @@ export class AttendancePolicyResponseDto {
   maxShiftHours!: number;
   @ApiProperty({ enum: REMOTE })
   unapprovedRemoteCheckIn!: (typeof REMOTE)[number];
+  @ApiProperty({ enum: VERIFY })
+  officeCheckInVerification!: (typeof VERIFY)[number];
   @ApiProperty({ description: 'In force today' })
   current!: boolean;
 }

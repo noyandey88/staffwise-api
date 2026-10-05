@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional } from 'class-validator';
+import { IsIn, IsOptional, IsLatitude, IsLongitude } from 'class-validator';
 import { workLocationEnum } from '../../database/schema/attendance.schema.js';
 
 export type WorkLocation = (typeof workLocationEnum.enumValues)[number];
@@ -13,4 +13,18 @@ export class CheckInDto {
   @IsOptional()
   @IsIn(workLocationEnum.enumValues)
   location?: WorkLocation;
+
+  @ApiPropertyOptional({
+    example: 23.7925,
+    description:
+      'Device latitude; used when office check-ins are verified by location',
+  })
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @ApiPropertyOptional({ example: 90.4078 })
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
 }

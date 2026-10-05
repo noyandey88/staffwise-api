@@ -12,6 +12,10 @@ export class AttendanceRecordResponseDto {
     description: 'Remote on an expected office day without approval',
   })
   outsideArrangement!: boolean;
+  @ApiProperty({ nullable: true, type: Number, description: 'Verified office' })
+  officeId!: number | null;
+  @ApiProperty({ nullable: true, enum: ['ip', 'location'] })
+  verifiedBy!: 'ip' | 'location' | null;
   workedMinutes!: number | null;
   isLate!: boolean;
   overtimeMinutes!: number | null;

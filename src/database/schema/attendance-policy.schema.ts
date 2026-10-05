@@ -24,6 +24,14 @@ export const unapprovedRemoteCheckInEnum = pgEnum(
   ['block', 'flag'],
 );
 
+/** How an office check-in must be proven. */
+export const officeVerificationEnum = pgEnum('office_check_in_verification', [
+  'none',
+  'ip',
+  'location',
+  'ip_or_location',
+]);
+
 export const attendancePolicies = pgTable(
   'attendance_policies',
   {
@@ -44,6 +52,11 @@ export const attendancePolicies = pgTable(
       'unapproved_remote_check_in',
     )
       .default('block')
+      .notNull(),
+    officeCheckInVerification: officeVerificationEnum(
+      'office_check_in_verification',
+    )
+      .default('none')
       .notNull(),
     createdBy: integer('created_by').references(() => users.id),
     ...timestamps,

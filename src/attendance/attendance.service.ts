@@ -28,6 +28,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { CheckInDto } from './dto/check-in.dto.js';
 import { WorkModeService } from '../work-mode/work-mode.service.js';
 import { RemoteWorkService } from '../work-mode/remote-work.service.js';
+import { OfficeService } from '../office/office.service.js';
 
 /** Roles that see and review every employee's attendance. */
 const ATTENDANCE_ADMIN_ROLES: readonly UserRole[] = [
@@ -45,6 +46,7 @@ export class AttendanceService {
     private readonly policy: AttendancePolicyService,
     private readonly workModeService: WorkModeService,
     private readonly remoteWorkService: RemoteWorkService,
+    private readonly officeService: OfficeService,
     private readonly audit: AuditService,
   ) {}
 
@@ -53,7 +55,7 @@ export class AttendanceService {
    * the office needs an approved remote-work request; without one the
    * attendance policy blocks it or records it flagged.
    */
-  async checkIn(userId: number, dto: CheckInDto = {}) {
+  async checkIn(userId: number, dto: CheckInDto = {}, ip?: string) {
     const employee = await this.findActiveEmployee(userId);
     const date = today();
     const arrangement = await this.workModeService.resolve(employee, date);
@@ -73,12 +75,35 @@ export class AttendanceService {
       }
     }
 
-    const record = await this.attendanceRepository.checkIn(
-      employee.id,
-      date,
-      location,
+    // Office check-ins can be required to prove where they are.
+    let office: { officeId: number; by: 'ip' | 'location' } | null = null;
+    const verification = this.policy.rules().officeCheckInVerification;
+    if (location === 'office' && verification !== 'none') {
+      if ((dto.latitude === undefined) !== (dto.longitude === undefined)) {
+        throw new BadRequestException('Send latitude and longitude together');
+      }
+      office = await this.officeService.verify(verification, {
+        ip,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      });
+      if (!office) {
+        throw new ForbiddenException(
+          verification === 'ip'
+            ? 'Check in from an office network'
+            : verification === 'location'
+              ? 'Your location is not within an office; enable location and try again'
+              : 'Could not verify you are at an office (office network or location required)',
+        );
+      }
+    }
+
+    const record = await this.attendanceRepository.checkIn(employee.id, date, {
+      workLocation: location,
       outsideArrangement,
-    );
+      officeId: office?.officeId ?? null,
+      verifiedBy: office?.by ?? null,
+    });
 
     if (!record) {
       throw new ConflictException('Attendance record already exists for today');

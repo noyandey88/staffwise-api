@@ -9,6 +9,7 @@ import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
 import { DebugPayloadInterceptor } from './common/interceptors/debug-payload.interceptor.js';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor.js';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 /**
  * Builds the fully configured application: logger, security middleware,
@@ -16,11 +17,24 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor.
  * this and then listens. Add global wiring here, not in `main.ts`.
  */
 export async function createApp(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   const logger = app.get(Logger);
   app.useLogger(logger);
   app.enableShutdownHooks();
 
+  const trustProxy = app.get(ConfigService).get<string>('TRUST_PROXY')!;
+  app.set(
+    'trust proxy',
+    trustProxy === 'true'
+      ? true
+      : trustProxy === 'false'
+        ? false
+        : /^\d+$/.test(trustProxy)
+          ? Number(trustProxy)
+          : trustProxy,
+  );
   app.use(helmet());
   // Lets AuditService find the acting user without threading it through calls.
   app.use(requestContextMiddleware);
