@@ -89,7 +89,10 @@ export class PayrollRepository {
             LEAST(lr.end_date, ${end}::date - 1),
             interval '1 day'
           ) AS d
-          WHERE ${notWeekend(sql`d`, weekendDays)}
+          -- No leave row means nothing to count: GREATEST/LEAST skip NULLs,
+          -- so without this the series would span the whole month.
+          WHERE lr.id IS NOT NULL
+            AND ${notWeekend(sql`d`, weekendDays)}
             AND NOT EXISTS (SELECT 1 FROM ${holidays} h WHERE h.date = d::date)
         ) wd ON true
         GROUP BY cs.employee_id, cs.base_pay, cs.allowances
