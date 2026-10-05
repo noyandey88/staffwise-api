@@ -3,6 +3,12 @@ import type {
   PayslipLine,
 } from '../database/schema/payroll.schema.js';
 import { fromMinor, toMinor } from '../common/utils/money.util.js';
+import {
+  amountForDays,
+  type DayCounts,
+  type PolicyRules,
+  unpaidLeaveRule,
+} from './policy.calc.js';
 
 /** A component as it applies to one employee this month. */
 export interface AppliedComponent {
@@ -44,14 +50,25 @@ export function componentLine(
   };
 }
 
-/** Unpaid leave at basic / 30 per working day (the long-standing rule). */
-export function unpaidLeaveLine(basePay: string, days: number): PayslipLine {
+/** Unpaid leave at the policy's daily rate (full monthly salary). */
+export function unpaidLeaveLine(
+  policy: PolicyRules,
+  salary: { basePay: string; allowances: string },
+  month: DayCounts,
+  days: number,
+): PayslipLine {
+  const { amount, note } = amountForDays(
+    unpaidLeaveRule(policy),
+    salary,
+    month,
+    days,
+  );
   return {
     label: 'Unpaid leave',
     kind: 'deduction',
-    amount: fromMinor(Math.round((toMinor(basePay) * days) / 30)),
+    amount,
     source: 'unpaid_leave',
-    note: `${days} working day(s) × basic / 30`,
+    note,
   };
 }
 

@@ -47,6 +47,9 @@ export function renderPayslipPdf(input: PayslipPdfInput): Promise<Buffer> {
       ['Department', e.departmentName],
       ['Pay period', period],
       ['Unpaid leave', `${s.unpaidLeaveDays} day(s)`],
+      ...(s.proRataNote
+        ? [['Pro-rata', s.proRataNote] as [string, string]]
+        : []),
     ]);
     const label = (l: PayslipLine) =>
       l.note ? `${l.label} (${l.note})` : l.label;

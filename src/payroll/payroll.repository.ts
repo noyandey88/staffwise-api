@@ -37,6 +37,7 @@ import {
   payslipTotals,
   unpaidLeaveLine,
 } from './payslip.calc.js';
+import { type DayCounts, type PolicyRules, proRata } from './policy.calc.js';
 import { leaveRequests, leaveTypes } from '../database/schema/leave.schema.js';
 import { employees } from '../database/schema/employees.schema.js';
 import { users } from '../database/schema/user.schema.js';
@@ -61,7 +62,19 @@ export class PayrollRepository {
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async generate(month: string) {
+  /**
+   * `policy` decides unpaid-leave rates and joiner pro-rata; `month` holds
+   * the month's calendar/working day counts; `workingDaysBetween` counts a
+   * joiner's working days (only called when the policy needs it).
+   */
+  async generate(
+    month: string,
+    ctx: {
+      policy: PolicyRules;
+      month: DayCounts & { end: string };
+      workingDaysBetween: (from: string, to: string) => Promise<number>;
+    },
+  ) {
     return this.db.transaction(async (tx) => {
       const { start, end } = monthRange(month);
       const existing = await tx.query.payrollRuns.findFirst({
@@ -90,11 +103,12 @@ export class PayrollRepository {
         employeeId: number;
         basePay: string;
         allowances: string;
+        hiredAt: string;
         unpaidLeaveDays: number;
       }>(sql`
         WITH current_salary AS (
           SELECT DISTINCT ON (ss.employee_id)
-            ss.employee_id, ss.base_pay, ss.allowances
+            ss.employee_id, ss.base_pay, ss.allowances, e.hired_at
           FROM ${salaryStructures} ss
           JOIN ${employees} e ON e.id = ss.employee_id
           WHERE ss.effective_from < ${end}::date
@@ -105,6 +119,7 @@ export class PayrollRepository {
           cs.employee_id AS "employeeId",
           cs.base_pay AS "basePay",
           cs.allowances AS "allowances",
+          to_char(cs.hired_at, 'YYYY-MM-DD') AS "hiredAt",
           COALESCE(SUM(wd.days), 0)::int AS "unpaidLeaveDays"
         FROM current_salary cs
         LEFT JOIN (
@@ -129,7 +144,7 @@ export class PayrollRepository {
             AND ${notWeekend(sql`d`)}
             AND NOT EXISTS (SELECT 1 FROM ${holidays} h WHERE h.date = d::date)
         ) wd ON true
-        GROUP BY cs.employee_id, cs.base_pay, cs.allowances
+        GROUP BY cs.employee_id, cs.base_pay, cs.allowances, cs.hired_at
       `);
 
       if (rows.rows.length === 0) {
@@ -161,11 +176,37 @@ export class PayrollRepository {
         assigned.set(`${a.employeeId}:${a.componentId}`, a); // later rows win
       }
 
+      const { policy } = ctx;
       const negative: number[] = [];
-      const payslipValues = rows.rows.map((r) => {
+      const payslipValues: (typeof payslips.$inferInsert)[] = [];
+      for (const r of rows.rows) {
+        // Joined during this month: pay only the share worked (policy).
+        let basePay = r.basePay;
+        let allowances = r.allowances;
+        let proRataNote: string | null = null;
+        let scaleFixed = (amount: string) => amount;
+        if (policy.prorateJoiners && r.hiredAt > start) {
+          const worked = {
+            calendarDays:
+              Number(ctx.month.end.slice(8, 10)) -
+              Number(r.hiredAt.slice(8, 10)) +
+              1,
+            workingDays:
+              policy.proRataMethod === 'working_days'
+                ? await ctx.workingDaysBetween(r.hiredAt, ctx.month.end)
+                : 0,
+          };
+          const share = proRata(policy, worked, ctx.month);
+          basePay = share.apply(r.basePay);
+          allowances = share.apply(r.allowances);
+          proRataNote = `Joined ${r.hiredAt}: ${share.note}`;
+          if (policy.prorateFixedComponents) scaleFixed = share.apply;
+        }
+
         const lines: PayslipLine[] = [];
         if (r.unpaidLeaveDays > 0) {
-          lines.push(unpaidLeaveLine(r.basePay, r.unpaidLeaveDays));
+          // Daily rate from the full monthly salary, not the pro-rated one.
+          lines.push(unpaidLeaveLine(policy, r, ctx.month, r.unpaidLeaveDays));
         }
         for (const component of components) {
           const assignment = assigned.get(`${r.employeeId}:${component.id}`);
@@ -174,24 +215,28 @@ export class PayrollRepository {
             component,
             value: assignment?.value ?? component.defaultValue,
           };
-          const line = componentLine(applied, r.basePay, r.allowances);
+          const line = componentLine(applied, basePay, allowances);
+          if (component.calculation === 'fixed') {
+            line.amount = scaleFixed(line.amount);
+          }
           if (Number(line.amount) > 0) lines.push(line);
         }
-        const totals = payslipTotals(r.basePay, r.allowances, lines);
+        const totals = payslipTotals(basePay, allowances, lines);
         if (totals.negative) negative.push(r.employeeId);
 
-        return {
+        payslipValues.push({
           payrollRunId: run.id,
           employeeId: r.employeeId,
-          basePay: r.basePay,
-          allowances: r.allowances,
+          basePay,
+          allowances,
           grossPay: totals.grossPay,
           deductions: totals.deductions,
           netPay: totals.netPay,
           lines,
           unpaidLeaveDays: r.unpaidLeaveDays,
-        };
-      });
+          proRataNote,
+        });
+      }
 
       if (negative.length) {
         throw new ConflictException(

@@ -10,6 +10,7 @@ import { CompanyService } from '../company/company.service.js';
 import { CalendarService } from '../calendar/calendar.service.js';
 import { NotificationService } from '../mail/notification.service.js';
 import { renderPayslipPdf } from './payslip.pdf.js';
+import { PayrollPolicyService } from './payroll-policy.service.js';
 import { type JwtPayload } from '../auth/auth.types.js';
 import { UserRole } from '../user/user.types.js';
 import { PayrollRunQueryDto } from './dto/payroll-run-query.dto.js';
@@ -29,6 +30,7 @@ export class PayrollService {
     private readonly companyService: CompanyService,
     private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
+    private readonly policyService: PayrollPolicyService,
     private readonly audit: AuditService,
   ) {}
 
@@ -63,7 +65,12 @@ export class PayrollService {
   }
 
   async generate(month: string) {
-    const run = await this.payrollRepository.generate(month);
+    const run = await this.payrollRepository.generate(month, {
+      policy: await this.policyService.rules(),
+      month: await this.calendarService.monthDays(`${month}-01`),
+      workingDaysBetween: (from, to) =>
+        this.calendarService.workingDays(from, to),
+    });
     await this.audit.record({
       action: 'payroll_run.generated',
       entityType: 'payroll_run',

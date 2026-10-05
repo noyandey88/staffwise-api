@@ -29,6 +29,20 @@ export class CalendarService {
     private readonly audit: AuditService,
   ) {}
 
+  /** Calendar and working days of the month containing `date`. */
+  async monthDays(date: string) {
+    const start = `${date.slice(0, 7)}-01`;
+    const [y, m] = date.split('-').map(Number);
+    const calendarDays = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const end = `${date.slice(0, 7)}-${String(calendarDays).padStart(2, '0')}`;
+    return {
+      start,
+      end,
+      calendarDays,
+      workingDays: await this.workingDays(start, end),
+    };
+  }
+
   /** Working days in [start, end] (YYYY-MM-DD, inclusive). */
   async workingDays(start: string, end: string): Promise<number> {
     if (end < start) {

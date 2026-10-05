@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -146,6 +147,61 @@ export const employeePayComponents = pgTable(
   (t) => [index('employee_pay_components_employee_idx').on(t.employeeId)],
 );
 
+/** What a daily rate is a fraction of. */
+export const rateBaseEnum = pgEnum('rate_base', ['basic', 'gross']);
+
+/** How many days a month is divided into. */
+export const dayCountEnum = pgEnum('day_count', [
+  'fixed',
+  'calendar_days',
+  'working_days',
+]);
+
+/**
+ * Single-row (id = 1) payroll rules each deployment chooses. The column
+ * defaults reproduce the original hardcoded behaviour.
+ */
+export const payrollPolicy = pgTable(
+  'payroll_policy',
+  {
+    id: integer().primaryKey().default(1),
+    /** Unpaid leave deduction per working day = base / divisor. */
+    unpaidLeaveRateBase: rateBaseEnum('unpaid_leave_rate_base')
+      .default('basic')
+      .notNull(),
+    unpaidLeaveDivisor: dayCountEnum('unpaid_leave_divisor')
+      .default('fixed')
+      .notNull(),
+    unpaidLeaveFixedDays: integer('unpaid_leave_fixed_days')
+      .default(30)
+      .notNull(),
+    /** Leave encashment per day = base / divisor. */
+    encashmentRateBase: rateBaseEnum('encashment_rate_base')
+      .default('basic')
+      .notNull(),
+    encashmentDivisor: dayCountEnum('encashment_divisor')
+      .default('fixed')
+      .notNull(),
+    encashmentFixedDays: integer('encashment_fixed_days').default(30).notNull(),
+    /** Partial months (joiners, leavers): share of the month that is paid. */
+    proRataMethod: dayCountEnum('pro_rata_method')
+      .default('calendar_days')
+      .notNull(),
+    proRataFixedDays: integer('pro_rata_fixed_days').default(30).notNull(),
+    /** Pro-rate the month an employee joins. */
+    prorateJoiners: boolean('prorate_joiners').default(false).notNull(),
+    /** Also pro-rate fixed-amount components (percentages always follow pay). */
+    prorateFixedComponents: boolean('prorate_fixed_components')
+      .default(false)
+      .notNull(),
+    updatedBy: integer('updated_by').references(() => users.id),
+    ...timestamps,
+  },
+  (t) => [check('payroll_policy_singleton', sql`${t.id} = 1`)],
+);
+
+export type PayrollPolicy = typeof payrollPolicy.$inferSelect;
+
 export type PayslipLineSource = 'component' | 'unpaid_leave' | 'adjustment';
 
 export interface PayslipLine {
@@ -179,6 +235,8 @@ export const payslips = pgTable(
     lines: jsonb('lines').$type<PayslipLine[]>().default([]).notNull(),
     netPay: numeric('net_pay', { precision: 12, scale: 2 }).notNull(),
     unpaidLeaveDays: integer('unpaid_leave_days').notNull().default(0),
+    /** Set when basic/allowances were pro-rated (e.g. joined mid-month). */
+    proRataNote: varchar('pro_rata_note', { length: 200 }),
     // Snapshot of the primary bank account, taken when the run is approved.
     bankAccountHolderName: varchar('bank_account_holder_name', { length: 150 }),
     bankName: varchar('bank_name', { length: 100 }),

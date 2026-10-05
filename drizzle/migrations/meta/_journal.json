@@ -232,6 +232,13 @@
       "when": 1791186025482,
       "tag": "0032_ambitious_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791186340319,
+      "tag": "0033_legal_solo",
+      "breakpoints": true
     }
   ]
 }

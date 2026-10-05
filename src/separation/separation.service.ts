@@ -28,13 +28,14 @@ import type {
   Separation,
   SettlementLine,
 } from '../database/schema/separation.schema.js';
+import { fromMinor, toMinor, totals } from './settlement.util.js';
 import {
-  fromMinor,
-  perDay,
-  proRataSalary,
-  toMinor,
-  totals,
-} from './settlement.util.js';
+  amountForDays,
+  encashmentRule,
+  proRata,
+  unpaidLeaveRule,
+} from '../payroll/policy.calc.js';
+import { PayrollPolicyService } from '../payroll/payroll-policy.service.js';
 
 const SEPARATION_ADMIN_ROLES: readonly UserRole[] = [
   UserRole.SuperAdmin,
@@ -53,6 +54,7 @@ export class SeparationService {
     private readonly calendarService: CalendarService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationService,
+    private readonly policyService: PayrollPolicyService,
   ) {}
 
   // --- employee ---
@@ -382,55 +384,72 @@ export class SeparationService {
     separation: Separation,
   ): Promise<SettlementLine[]> {
     const lwd = separation.lastWorkingDay;
-    const monthStart = `${lwd.slice(0, 8)}01`;
     const salary = await this.repository.salaryOn(separation.employeeId, lwd);
     if (!salary) return [];
+    const [policy, month, employee] = await Promise.all([
+      this.policyService.rules(),
+      this.calendarService.monthDays(lwd),
+      this.employeesService.findById(separation.employeeId),
+    ]);
     const lines: SettlementLine[] = [];
-    const gross = fromMinor(
-      toMinor(salary.basePay) + toMinor(salary.allowances),
-    );
+    const label = `Salary for ${lwd.slice(0, 7)}`;
 
     if (
       await this.repository.hasPayslipForMonth(
         separation.employeeId,
-        monthStart,
+        month.start,
       )
     ) {
       lines.push({
-        label: `Salary for ${lwd.slice(0, 7)}`,
+        label,
         kind: 'earning',
         amount: '0.00',
         source: 'salary',
         note: "Already included in that month's payroll run",
       });
     } else {
-      const pay = proRataSalary(gross, lwd);
+      // Paid from the 1st (or the hire date, if they joined this month).
+      const from =
+        employee.hiredAt > month.start ? employee.hiredAt : month.start;
+      const worked = {
+        calendarDays: Number(lwd.slice(8, 10)) - Number(from.slice(8, 10)) + 1,
+        workingDays: await this.calendarService.workingDays(from, lwd),
+      };
+      const share = proRata(policy, worked, month);
       lines.push({
-        label: `Salary for ${lwd.slice(0, 7)}`,
+        label,
         kind: 'earning',
-        amount: pay.amount,
+        amount: share.apply(
+          fromMinor(toMinor(salary.basePay) + toMinor(salary.allowances)),
+        ),
         source: 'salary',
-        note: pay.note,
+        note: share.note,
       });
 
       let unpaidDays = 0;
       for (const leave of await this.repository.unpaidLeave(
         separation.employeeId,
-        monthStart,
+        from,
         lwd,
       )) {
         unpaidDays += await this.calendarService.workingDays(
-          leave.startDate > monthStart ? leave.startDate : monthStart,
+          leave.startDate > from ? leave.startDate : from,
           leave.endDate < lwd ? leave.endDate : lwd,
         );
       }
       if (unpaidDays) {
+        const { amount, note } = amountForDays(
+          unpaidLeaveRule(policy),
+          salary,
+          month,
+          unpaidDays,
+        );
         lines.push({
           label: 'Unpaid leave',
           kind: 'deduction',
-          amount: perDay(salary.basePay, unpaidDays),
+          amount,
           source: 'unpaid_leave',
-          note: `${unpaidDays} working day(s) × basic / 30`,
+          note,
         });
       }
     }
@@ -440,12 +459,18 @@ export class SeparationService {
       Number(lwd.slice(0, 4)),
     )) {
       if (balance.remainingDays <= 0) continue;
+      const { amount, note } = amountForDays(
+        encashmentRule(policy),
+        salary,
+        month,
+        balance.remainingDays,
+      );
       lines.push({
         label: `${balance.leaveTypeName} leave encashment`,
         kind: 'earning',
-        amount: perDay(salary.basePay, balance.remainingDays),
+        amount,
         source: 'leave_encashment',
-        note: `${balance.remainingDays} day(s) × basic / 30`,
+        note,
       });
     }
     return lines;

@@ -55,6 +55,13 @@ export class PayslipResponseDto {
   @ApiProperty({
     nullable: true,
     type: String,
+    example: 'Joined 2026-09-15: 16 of 30 calendar days',
+  })
+  proRataNote!: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    type: String,
     description: 'Salary account snapshot, set when the run is approved',
   })
   bankAccountHolderName!: string | null;
