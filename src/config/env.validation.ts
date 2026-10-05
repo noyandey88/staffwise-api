@@ -43,6 +43,12 @@ const envSchema = z
     JWT_ACCESS_EXPIRES_IN: z.coerce.number().int().positive().default(300),
     /** Refresh-token lifetime in seconds. */
     JWT_REFRESH_EXPIRES_IN: z.coerce.number().int().positive().default(604800),
+    /**
+     * Express "trust proxy" so request IPs (office check-in verification,
+     * audit log) are the client's behind a load balancer: false, true, a
+     * hop count, or addresses/subnets (e.g. "loopback, 10.0.0.0/8").
+     */
+    TRUST_PROXY: z.string().default('false'),
     /** Comma-separated list of allowed origins. Empty disables CORS. */
     CORS_ORIGINS: z.string().default(''),
     /** Super admin seeded on startup when none exists. Set both or neither. */

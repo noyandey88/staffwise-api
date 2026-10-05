@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Body,
+  Ip,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
@@ -29,6 +30,7 @@ import { MonthQueryDto } from './dto/month-query.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { UserRole } from '../user/user.types.js';
 import type { JwtPayload } from '../auth/auth.types.js';
+import { CheckInDto } from './dto/check-in.dto.js';
 
 @Auth()
 @ApiTags('Attendance')
@@ -37,7 +39,13 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('/check-in')
-  @ApiOperation({ summary: 'Check in for today' })
+  @ApiOperation({
+    summary: 'Check in for today',
+    description:
+      'Optional location (office/remote). Remote on an expected office day needs an ' +
+      'approved remote-work request (else blocked or flagged, per attendance policy). ' +
+      'Office check-ins may need an office network or latitude/longitude (officeCheckInVerification).',
+  })
   @ApiEnvelope(AttendanceRecordResponseDto, {
     message: 'Checked in successfully',
     status: HttpStatus.CREATED,
@@ -47,8 +55,12 @@ export class AttendanceController {
     HttpStatus.NOT_FOUND,
     HttpStatus.FORBIDDEN,
   )
-  create(@CurrentUser('sub') userId: number) {
-    return this.attendanceService.checkIn(userId);
+  create(
+    @CurrentUser('sub') userId: number,
+    @Body() dto: CheckInDto,
+    @Ip() ip: string,
+  ) {
+    return this.attendanceService.checkIn(userId, dto, ip);
   }
 
   @Post('/check-out')

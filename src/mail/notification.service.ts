@@ -160,6 +160,49 @@ export class NotificationService {
     });
   }
 
+  remoteWorkSubmitted(request: {
+    employeeId: number;
+    startDate: string;
+    endDate: string;
+    reason: string;
+  }) {
+    this.background('remote work submitted', async () => {
+      const who = await this.repository.employeeWithManager(request.employeeId);
+      if (!who?.managerEmail) return [];
+      return [
+        templates.remoteWorkSubmitted(
+          { email: who.managerEmail, firstName: who.managerFirstName! },
+          await this.brand(),
+          {
+            employeeName: `${who.firstName} ${who.lastName}`,
+            start: request.startDate,
+            end: request.endDate,
+            reason: request.reason,
+          },
+        ),
+      ];
+    });
+  }
+
+  remoteWorkDecided(request: {
+    employeeId: number;
+    startDate: string;
+    endDate: string;
+    status: string;
+  }) {
+    this.background('remote work decided', async () => {
+      const who = await this.repository.employeeWithManager(request.employeeId);
+      if (!who) return [];
+      return [
+        templates.remoteWorkDecided(who, await this.brand(), {
+          start: request.startDate,
+          end: request.endDate,
+          approved: request.status === 'approved',
+        }),
+      ];
+    });
+  }
+
   /** month: YYYY-MM-DD (first of month) as stored on payroll_runs. */
   payslipsReleased(runId: number, month: string) {
     this.background('payslips released', async () => {

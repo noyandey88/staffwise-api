@@ -86,6 +86,10 @@ export class AttendancePolicyService implements OnModuleInit {
       correctionWindowDays:
         dto.correctionWindowDays ?? base.correctionWindowDays,
       maxShiftHours: dto.maxShiftHours ?? base.maxShiftHours,
+      unapprovedRemoteCheckIn:
+        dto.unapprovedRemoteCheckIn ?? base.unapprovedRemoteCheckIn,
+      officeCheckInVerification:
+        dto.officeCheckInVerification ?? base.officeCheckInVerification,
       createdBy: userId,
     });
     if (!row) {
@@ -166,6 +170,8 @@ export class AttendancePolicyService implements OnModuleInit {
       standardWorkMinutes: row.standardWorkMinutes,
       correctionWindowDays: row.correctionWindowDays,
       maxShiftHours: row.maxShiftHours,
+      unapprovedRemoteCheckIn: row.unapprovedRemoteCheckIn,
+      officeCheckInVerification: row.officeCheckInVerification,
       current,
     };
   }

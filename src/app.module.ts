@@ -27,6 +27,8 @@ import { StorageModule } from './storage/storage.module.js';
 import { DocumentModule } from './document/document.module.js';
 import { ReportModule } from './report/report.module.js';
 import { AttendancePolicyModule } from './attendance-policy/attendance-policy.module.js';
+import { WorkModeModule } from './work-mode/work-mode.module.js';
+import { OfficeModule } from './office/office.module.js';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { AttendancePolicyModule } from './attendance-policy/attendance-policy.mo
     DocumentModule,
     ReportModule,
     AttendancePolicyModule,
+    WorkModeModule,
+    OfficeModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

@@ -2,6 +2,7 @@ import {
   check,
   date,
   integer,
+  pgEnum,
   pgTable,
   time,
   varchar,
@@ -17,6 +18,20 @@ import { timestamps } from './common.schema.js';
  * the row in force today supplies the timezone for "today" and the
  * correction limits.
  */
+/** Remote check-in on an expected office day without an approved request. */
+export const unapprovedRemoteCheckInEnum = pgEnum(
+  'unapproved_remote_check_in',
+  ['block', 'flag'],
+);
+
+/** How an office check-in must be proven. */
+export const officeVerificationEnum = pgEnum('office_check_in_verification', [
+  'none',
+  'ip',
+  'location',
+  'ip_or_location',
+]);
+
 export const attendancePolicies = pgTable(
   'attendance_policies',
   {
@@ -33,6 +48,16 @@ export const attendancePolicies = pgTable(
     correctionWindowDays: integer('correction_window_days').notNull(),
     /** Longest shift a correction may record. */
     maxShiftHours: integer('max_shift_hours').notNull(),
+    unapprovedRemoteCheckIn: unapprovedRemoteCheckInEnum(
+      'unapproved_remote_check_in',
+    )
+      .default('block')
+      .notNull(),
+    officeCheckInVerification: officeVerificationEnum(
+      'office_check_in_verification',
+    )
+      .default('none')
+      .notNull(),
     createdBy: integer('created_by').references(() => users.id),
     ...timestamps,
   },

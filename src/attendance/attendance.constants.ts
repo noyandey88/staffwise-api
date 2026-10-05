@@ -9,4 +9,6 @@ export const DEFAULT_ATTENDANCE_POLICY = {
   standardWorkMinutes: 8 * 60,
   correctionWindowDays: 30,
   maxShiftHours: 24,
+  unapprovedRemoteCheckIn: 'block',
+  officeCheckInVerification: 'none',
 } as const;
