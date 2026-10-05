@@ -61,7 +61,7 @@ export class PayrollRepository {
     @Inject(DRIZZLE_ORM) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async generate(month: string, weekendDays: readonly number[]) {
+  async generate(month: string) {
     return this.db.transaction(async (tx) => {
       const { start, end } = monthRange(month);
       const existing = await tx.query.payrollRuns.findFirst({
@@ -126,7 +126,7 @@ export class PayrollRepository {
           -- No leave row means nothing to count: GREATEST/LEAST skip NULLs,
           -- so without this the series would span the whole month.
           WHERE lr.id IS NOT NULL
-            AND ${notWeekend(sql`d`, weekendDays)}
+            AND ${notWeekend(sql`d`)}
             AND NOT EXISTS (SELECT 1 FROM ${holidays} h WHERE h.date = d::date)
         ) wd ON true
         GROUP BY cs.employee_id, cs.base_pay, cs.allowances

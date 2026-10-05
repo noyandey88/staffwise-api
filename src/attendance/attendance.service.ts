@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { AttendanceRepository } from './attendance.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
-import { CalendarService } from '../calendar/calendar.service.js';
 import {
   addDays,
   currentMonth,
@@ -42,7 +41,6 @@ export class AttendanceService {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
     private readonly employeeService: EmployeesService,
-    private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
     private readonly audit: AuditService,
   ) {}
@@ -129,7 +127,6 @@ export class AttendanceService {
       start,
       end,
       today(),
-      await this.calendarService.weekendDays(),
     );
   }
 

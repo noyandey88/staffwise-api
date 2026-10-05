@@ -1,7 +1,6 @@
 import { Injectable, StreamableFile } from '@nestjs/common';
 import { ReportRepository } from './report.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
-import { CalendarService } from '../calendar/calendar.service.js';
 import {
   currentMonth,
   monthRange,
@@ -16,13 +15,11 @@ export class ReportService {
   constructor(
     private readonly repository: ReportRepository,
     private readonly employeesService: EmployeesService,
-    private readonly calendarService: CalendarService,
   ) {}
 
   /** Company-wide snapshot for Admin/HR. */
   async overview() {
     const { start, end } = monthRange(currentMonth());
-    const weekendDays = await this.calendarService.weekendDays();
     const [
       departments,
       thisMonth,
@@ -33,7 +30,7 @@ export class ReportService {
     ] = await Promise.all([
       this.repository.headcountByDepartment(),
       this.repository.movements(start, end),
-      this.repository.today(today(), weekendDays),
+      this.repository.today(today()),
       this.repository.pending(),
       this.repository.latestPayrollRun(),
       this.employeesService.upcomingBirthdays(7),
@@ -63,11 +60,7 @@ export class ReportService {
       .filter((r) => !SIGN_IN_BLOCKED_STATUSES.includes(r.status))
       .map((r) => r.id);
     const [todayCounts, pending] = await Promise.all([
-      this.repository.today(
-        today(),
-        await this.calendarService.weekendDays(),
-        ids,
-      ),
+      this.repository.today(today(), ids),
       this.repository.pending(ids),
     ]);
     return { teamSize: ids.length, today: todayCounts, pending };
@@ -89,12 +82,7 @@ export class ReportService {
 
   async attendance(month = currentMonth(), format?: 'json' | 'csv') {
     const { start, end } = monthRange(month);
-    const rows = await this.repository.attendance(
-      start,
-      end,
-      today(),
-      await this.calendarService.weekendDays(),
-    );
+    const rows = await this.repository.attendance(start, end, today());
     return format === 'csv'
       ? this.csv(`attendance-${month}`, rows, [
           ['Employee ID', 'employeeCode'],

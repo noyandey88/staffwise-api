@@ -9,7 +9,6 @@ import {
 import type { CompanyProfile } from '../database/schema/company.schema.js';
 import { CompanyRepository } from './company.repository.js';
 import { UpsertCompanyDto } from './dto/upsert-company.dto.js';
-import { DEFAULT_WEEKEND_DAYS } from '../calendar/calendar.constants.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
@@ -122,7 +121,6 @@ export class CompanyService {
       signatoryName: dto.signatoryName ?? null,
       signatoryTitle: dto.signatoryTitle ?? null,
       currency: dto.currency ?? 'BDT',
-      weekendDays: [...(dto.weekendDays ?? DEFAULT_WEEKEND_DAYS)].sort(),
     });
     await this.audit.record({
       action: before ? 'company.updated' : 'company.created',

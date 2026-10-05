@@ -1,19 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  ArrayMaxSize,
-  ArrayUnique,
-  IsArray,
   IsEmail,
-  IsInt,
   IsISO4217CurrencyCode,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
   Matches,
-  Max,
   MaxLength,
-  Min,
 } from 'class-validator';
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -108,19 +102,4 @@ export class UpsertCompanyDto {
   @IsOptional()
   @IsISO4217CurrencyCode()
   currency?: string;
-
-  @ApiPropertyOptional({
-    example: [5, 6],
-    type: [Number],
-    description:
-      'Weekly days off, 0 = Sunday … 6 = Saturday; defaults to Friday + Saturday',
-  })
-  @IsOptional()
-  @IsArray()
-  @ArrayUnique()
-  @ArrayMaxSize(6)
-  @IsInt({ each: true })
-  @Min(0, { each: true })
-  @Max(6, { each: true })
-  weekendDays?: number[];
 }

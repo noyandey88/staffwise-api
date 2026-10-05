@@ -48,7 +48,7 @@ import {
  * `day` (date), employee `e`, LEFT JOINed attendance record `a` and
  * holiday `h` for that day.
  */
-export function dayStatusSql(today: string, weekendDays: readonly number[]) {
+export function dayStatusSql(today: string) {
   return sql`CASE
     WHEN a.id IS NOT NULL THEN
       CASE
@@ -58,7 +58,7 @@ export function dayStatusSql(today: string, weekendDays: readonly number[]) {
       END
     WHEN day < e.hired_at THEN 'not_employed'
     WHEN h.id IS NOT NULL THEN 'holiday'
-    WHEN NOT (${notWeekend(sql`day`, weekendDays)}) THEN 'weekend'
+    WHEN NOT (${notWeekend(sql`day`)}) THEN 'weekend'
     WHEN EXISTS (
       SELECT 1 FROM ${leaveRequests} lr
       WHERE lr.employee_id = e.id
@@ -203,12 +203,11 @@ export class AttendanceRepository {
     start: string,
     end: string,
     today: string,
-    weekendDays: readonly number[],
   ): Promise<AttendanceDayRow[]> {
     const result = await this.db.execute<AttendanceDayRow>(sql`
       SELECT
         to_char(day, 'YYYY-MM-DD') AS date,
-        ${dayStatusSql(today, weekendDays)} AS status,
+        ${dayStatusSql(today)} AS status,
         h.name AS "holidayName",
         a.check_in_at AS "checkInAt",
         a.check_out_at AS "checkOutAt",

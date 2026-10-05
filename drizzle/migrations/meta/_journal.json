@@ -225,6 +225,13 @@
       "when": 1791184529436,
       "tag": "0031_noisy_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791186025482,
+      "tag": "0032_ambitious_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }

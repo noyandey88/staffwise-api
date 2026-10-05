@@ -28,11 +28,6 @@ export const companyProfile = pgTable(
     signatoryName: varchar('signatory_name', { length: 100 }),
     signatoryTitle: varchar('signatory_title', { length: 100 }),
     currency: char('currency', { length: 3 }).default('BDT').notNull(),
-    /** Days of week off (0 = Sunday … 6 = Saturday, as Postgres `dow`). */
-    weekendDays: integer('weekend_days')
-      .array()
-      .default(sql`'{5,6}'`)
-      .notNull(),
     ...timestamps,
   },
   (t) => [check('company_profile_singleton', sql`${t.id} = 1`)],

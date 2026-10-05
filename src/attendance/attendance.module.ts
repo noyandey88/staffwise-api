@@ -3,10 +3,9 @@ import { AttendanceService } from './attendance.service.js';
 import { AttendanceController } from './attendance.controller.js';
 import { EmployeesModule } from '../employees/employees.module.js';
 import { AttendanceRepository } from './attendance.repository.js';
-import { CalendarModule } from '../calendar/calendar.module.js';
 
 @Module({
-  imports: [EmployeesModule, CalendarModule],
+  imports: [EmployeesModule],
   controllers: [AttendanceController],
   providers: [AttendanceService, AttendanceRepository],
 })

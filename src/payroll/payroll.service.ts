@@ -63,10 +63,7 @@ export class PayrollService {
   }
 
   async generate(month: string) {
-    const run = await this.payrollRepository.generate(
-      month,
-      await this.calendarService.weekendDays(),
-    );
+    const run = await this.payrollRepository.generate(month);
     await this.audit.record({
       action: 'payroll_run.generated',
       entityType: 'payroll_run',

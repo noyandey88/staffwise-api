@@ -90,11 +90,7 @@ export class ReportRepository {
   }
 
   /** Today's status counts for current staff (optionally a subset). */
-  async today(
-    today: string,
-    weekendDays: readonly number[],
-    employeeIds?: number[],
-  ) {
+  async today(today: string, employeeIds?: number[]) {
     const [row] = await this.rows<{
       present: number;
       late: number;
@@ -103,7 +99,7 @@ export class ReportRepository {
       offToday: number;
     }>(sql`
       WITH s AS (
-        SELECT ${dayStatusSql(today, weekendDays)} AS status
+        SELECT ${dayStatusSql(today)} AS status
         FROM ${employees} e
         CROSS JOIN LATERAL (SELECT ${today}::date AS day) d
         LEFT JOIN ${attendanceRecords} a ON a.employee_id = e.id AND a.work_date = day
@@ -167,7 +163,6 @@ export class ReportRepository {
     start: string,
     end: string,
     today: string,
-    weekendDays: readonly number[],
     employeeIds?: number[],
   ) {
     return this.rows<{
@@ -184,7 +179,7 @@ export class ReportRepository {
     }>(sql`
       WITH s AS (
         SELECT e.id AS employee_id,
-          ${dayStatusSql(today, weekendDays)} AS status,
+          ${dayStatusSql(today)} AS status,
           floor(extract(epoch FROM (a.check_out_at - a.check_in_at)) / 60) AS worked
         FROM ${employees} e
         CROSS JOIN LATERAL (
