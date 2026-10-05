@@ -24,6 +24,7 @@ import {
   type SalaryCertificateSnapshot,
 } from '../database/schema/salary-certificate.schema.js';
 import { renderSalaryCertificatePdf } from './salary-certificate.pdf.js';
+import { AuditService } from '../audit/audit.service.js';
 
 /** Roles that issue certificates and see everyone's. */
 const CERTIFICATE_ADMIN_ROLES: readonly UserRole[] = [
@@ -39,6 +40,7 @@ export class SalaryCertificateService {
     private readonly employeesService: EmployeesService,
     private readonly companyService: CompanyService,
     private readonly notifications: NotificationService,
+    private readonly audit: AuditService,
   ) {}
 
   // --- employee ---
@@ -101,6 +103,7 @@ export class SalaryCertificateService {
       reviewedBy: requester.sub,
       snapshot,
     });
+    await this.recordDecision(row);
     this.notifications.certificateDecided(row);
     return this.toResponse(row);
   }
@@ -111,6 +114,7 @@ export class SalaryCertificateService {
     const snapshot = await this.snapshot(existing.employeeId);
     const row = await this.repository.issueRequest(id, requester.sub, snapshot);
     if (!row) throw new ConflictException('Only open requests can be issued');
+    await this.recordDecision(row);
     this.notifications.certificateDecided(row);
     return this.toResponse(row);
   }
@@ -120,6 +124,7 @@ export class SalaryCertificateService {
     await this.assertNotOwn(requester, existing.employeeId);
     const row = await this.repository.reject(id, requester.sub);
     if (!row) throw new ConflictException('Only open requests can be rejected');
+    await this.recordDecision(row);
     this.notifications.certificateDecided(row);
     return this.toResponse(row);
   }
@@ -215,6 +220,19 @@ export class SalaryCertificateService {
         'You cannot issue a salary certificate for yourself',
       );
     }
+  }
+
+  private async recordDecision(row: SalaryCertificate) {
+    await this.audit.record({
+      action: `salary_certificate.${row.status}`,
+      entityType: 'salary_certificate',
+      entityId: row.id,
+      metadata: {
+        employeeId: row.employeeId,
+        referenceNo: row.referenceNo,
+        purpose: row.purpose,
+      },
+    });
   }
 
   private toResponse(row: SalaryCertificate) {

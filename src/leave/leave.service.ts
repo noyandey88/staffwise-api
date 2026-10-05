@@ -21,6 +21,7 @@ import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
 import { today } from '../attendance/attendance.util.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { NotificationService } from '../mail/notification.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 /** Roles that see and review every employee's leave. */
 const LEAVE_ADMIN_ROLES: readonly UserRole[] = [
@@ -36,6 +37,7 @@ export class LeaveService {
     private readonly employeeService: EmployeesService,
     private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
+    private readonly audit: AuditService,
   ) {}
 
   // --- requests ---
@@ -142,6 +144,12 @@ export class LeaveService {
       requestId,
       requester.sub,
     );
+    await this.audit.record({
+      action: 'leave_request.approved',
+      entityType: 'leave_request',
+      entityId: requestId,
+      metadata: { employeeId: approved.employeeId, days: approved.days },
+    });
     this.notifications.leaveDecided(approved);
     return approved;
   }
@@ -152,6 +160,12 @@ export class LeaveService {
       requestId,
       requester.sub,
     );
+    await this.audit.record({
+      action: 'leave_request.rejected',
+      entityType: 'leave_request',
+      entityId: requestId,
+      metadata: { employeeId: rejected.employeeId },
+    });
     this.notifications.leaveDecided(rejected);
     return rejected;
   }
@@ -209,6 +223,16 @@ export class LeaveService {
       employees.map((e) => e.id),
       types,
     );
+    await this.audit.record({
+      action: 'leave_balance.allocated',
+      entityType: 'leave_balance',
+      entityId: dto.year,
+      metadata: {
+        year: dto.year,
+        created,
+        employeeIds: dto.employeeIds ?? 'all',
+      },
+    });
     return { created, skipped: employees.length * types.length - created };
   }
 
@@ -221,12 +245,30 @@ export class LeaveService {
         `${type.name} is unpaid leave and has no balance`,
       );
     }
-    return await this.leaveRepository.setBalance(
+    const before = await this.leaveRepository.findBalance(
+      dto.employeeId,
+      dto.leaveTypeId,
+      dto.year,
+    );
+    const balance = await this.leaveRepository.setBalance(
       dto.employeeId,
       dto.leaveTypeId,
       dto.year,
       dto.remainingDays,
     );
+    await this.audit.record({
+      action: 'leave_balance.set',
+      entityType: 'leave_balance',
+      entityId: balance.id,
+      before: before ? { remainingDays: before.remainingDays } : null,
+      after: { remainingDays: balance.remainingDays },
+      metadata: {
+        employeeId: dto.employeeId,
+        leaveTypeId: dto.leaveTypeId,
+        year: dto.year,
+      },
+    });
+    return balance;
   }
 
   // --- leave types ---
@@ -244,6 +286,12 @@ export class LeaveService {
     if (!type) {
       throw new ConflictException(`Leave type ${dto.name} already exists`);
     }
+    await this.audit.record({
+      action: 'leave_type.created',
+      entityType: 'leave_type',
+      entityId: type.id,
+      after: type,
+    });
     return type;
   }
 
@@ -260,6 +308,13 @@ export class LeaveService {
     if (type === null) {
       throw new ConflictException(`Leave type ${dto.name} already exists`);
     }
+    await this.audit.record({
+      action: 'leave_type.updated',
+      entityType: 'leave_type',
+      entityId: id,
+      before: existing,
+      after: type,
+    });
     return type;
   }
 

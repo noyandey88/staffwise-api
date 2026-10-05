@@ -16,6 +16,7 @@ import { PayrollRunQueryDto } from './dto/payroll-run-query.dto.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { type Payslip } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber, toCsv } from './payroll.util.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class PayrollService {
@@ -25,6 +26,7 @@ export class PayrollService {
     private readonly companyService: CompanyService,
     private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
+    private readonly audit: AuditService,
   ) {}
 
   async listRuns(query: PayrollRunQueryDto) {
@@ -50,24 +52,49 @@ export class PayrollService {
     if (!(await this.payrollRepository.deleteDraft(runId))) {
       throw new ConflictException('Only draft runs can be deleted');
     }
+    await this.audit.record({
+      action: 'payroll_run.deleted',
+      entityType: 'payroll_run',
+      entityId: runId,
+    });
   }
 
   async generate(month: string) {
-    return await this.payrollRepository.generate(
+    const run = await this.payrollRepository.generate(
       month,
       await this.calendarService.weekendDays(),
     );
+    await this.audit.record({
+      action: 'payroll_run.generated',
+      entityType: 'payroll_run',
+      entityId: run.id,
+      metadata: { month },
+    });
+    return run;
   }
 
   /** Approval releases the payslips, so employees are told they're ready. */
   async approve(approverUserId: number, runId: number) {
     const run = await this.payrollRepository.approve(runId, approverUserId);
+    await this.audit.record({
+      action: 'payroll_run.approved',
+      entityType: 'payroll_run',
+      entityId: runId,
+      metadata: { month: run.month },
+    });
     this.notifications.payslipsReleased(run.id, run.month);
     return run;
   }
 
   async markPaid(runId: number) {
-    return await this.payrollRepository.markPaid(runId);
+    const run = await this.payrollRepository.markPaid(runId);
+    await this.audit.record({
+      action: 'payroll_run.paid',
+      entityType: 'payroll_run',
+      entityId: runId,
+      metadata: { month: run.month },
+    });
+    return run;
   }
 
   async payslipsForRun(runId: number) {

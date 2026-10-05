@@ -4,12 +4,14 @@ import { EmployeesService } from '../employees/employees.service.js';
 import { CreateBankAccountDto } from './dto/bank-account.dto.js';
 import { type EmployeeBankAccount } from '../database/schema/payroll.schema.js';
 import { maskAccountNumber } from './payroll.util.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class BankAccountService {
   constructor(
     private readonly bankAccountRepository: BankAccountRepository,
     private readonly employeesService: EmployeesService,
+    private readonly audit: AuditService,
   ) {}
 
   async findForEmployee(employeeId: number) {
@@ -33,11 +35,25 @@ export class BankAccountService {
       ...dto,
       employeeId,
     });
+    await this.audit.record({
+      action: 'bank_account.created',
+      entityType: 'bank_account',
+      entityId: account.id,
+      after: account,
+      metadata: { employeeId },
+    });
     return this.toResponse(account);
   }
 
   async setPrimary(id: number) {
-    return this.toResponse(await this.bankAccountRepository.setPrimary(id));
+    const account = await this.bankAccountRepository.setPrimary(id);
+    await this.audit.record({
+      action: 'bank_account.primary_set',
+      entityType: 'bank_account',
+      entityId: id,
+      metadata: { employeeId: account.employeeId },
+    });
+    return this.toResponse(account);
   }
 
   async remove(id: number) {
@@ -46,6 +62,13 @@ export class BankAccountService {
       throw new NotFoundException(`Bank account with id ${id} not found`);
     }
     await this.bankAccountRepository.remove(id);
+    await this.audit.record({
+      action: 'bank_account.deleted',
+      entityType: 'bank_account',
+      entityId: id,
+      before: account,
+      metadata: { employeeId: account.employeeId },
+    });
   }
 
   private toResponse(account: EmployeeBankAccount) {

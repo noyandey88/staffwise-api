@@ -13,10 +13,14 @@ import { UserRole } from './user.types.js';
 import { UserListQueryDto } from './dto/user-list-query.dto.js';
 import { pageWindow, paginated } from '../common/utils/pagination.util.js';
 import { SIGN_IN_BLOCKED_STATUSES } from '../employees/employees.enum.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly audit: AuditService,
+  ) {}
   /** Without the password hash; undefined when no user has that email. */
   async findByEmailOptional(email: string) {
     const user = await this.userRepository.findByEmail(email);
@@ -155,6 +159,13 @@ export class UserService {
     }
 
     const user = (await this.userRepository.updateRole(targetId, role))!;
+    await this.audit.record({
+      action: 'user.role_changed',
+      entityType: 'user',
+      entityId: targetId,
+      before: { role: target.role },
+      after: { role: user.role },
+    });
     const { password: _password, ...safeUser } = user;
     return safeUser;
   }

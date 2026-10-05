@@ -22,12 +22,16 @@ const PROFILE_ADMIN_ROLES: readonly UserRole[] = [
   UserRole.Hr,
 ];
 import { today } from '../attendance/attendance.util.js';
+import { AuditService } from '../audit/audit.service.js';
 
 const DEFAULT_BIRTHDAY_WINDOW_DAYS = 30;
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly employeesRepository: EmployeesRepository) {}
+  constructor(
+    private readonly employeesRepository: EmployeesRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   /** EMP-NNNNN is reserved for generated codes, so HR's own can never collide later. */
   private assertCustomCode(code: string | undefined) {
@@ -76,6 +80,12 @@ export class EmployeesService {
     this.assertEmploymentDates(data);
     await this.assertValidManager(undefined, data.managerId);
     const employee = await this.employeesRepository.create(data);
+    await this.audit.record({
+      action: 'employee.created',
+      entityType: 'employee',
+      entityId: employee.id,
+      after: employee,
+    });
     return employee;
   }
 
@@ -204,7 +214,17 @@ export class EmployeesService {
       emergencyContactPhone: dto.emergencyContactPhone,
     };
     if (Object.values(changes).some((v) => v !== undefined)) {
-      await this.employeesRepository.update(employee.id, changes);
+      const updated = await this.employeesRepository.update(
+        employee.id,
+        changes,
+      );
+      await this.audit.record({
+        action: 'employee.contact_updated',
+        entityType: 'employee',
+        entityId: employee.id,
+        before: employee,
+        after: updated,
+      });
     }
     return (await this.employeesRepository.findProfile(employee.id))!;
   }
@@ -264,12 +284,26 @@ export class EmployeesService {
     );
     this.assertEmploymentDates({ ...existing, ...defined });
     await this.assertValidManager(id, changes.managerId);
-    return await this.employeesRepository.update(id, changes);
+    const updated = await this.employeesRepository.update(id, changes);
+    await this.audit.record({
+      action: 'employee.updated',
+      entityType: 'employee',
+      entityId: id,
+      before: existing,
+      after: updated,
+    });
+    return updated;
   }
 
   async delete(id: number) {
-    await this.findById(id);
+    const existing = await this.findById(id);
     await this.employeesRepository.remove(id);
+    await this.audit.record({
+      action: 'employee.deleted',
+      entityType: 'employee',
+      entityId: id,
+      before: existing,
+    });
   }
 
   async findReports(id: number) {

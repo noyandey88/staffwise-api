@@ -28,6 +28,7 @@ import { NotificationService } from '../mail/notification.service.js';
 import { UserRole } from '../user/user.types.js';
 import { JwtPayload } from '../auth/auth.types.js';
 import { EmployeeStatus } from '../employees/employees.enum.js';
+import { AuditService } from '../audit/audit.service.js';
 
 /** Roles that see and review every employee's attendance. */
 const ATTENDANCE_ADMIN_ROLES: readonly UserRole[] = [
@@ -43,6 +44,7 @@ export class AttendanceService {
     private readonly employeeService: EmployeesService,
     private readonly calendarService: CalendarService,
     private readonly notifications: NotificationService,
+    private readonly audit: AuditService,
   ) {}
 
   async checkIn(userId: number) {
@@ -252,6 +254,17 @@ export class AttendanceService {
       requester.sub,
       (checkInAt, checkOutAt) => this.assertValidShift(checkInAt, checkOutAt),
     );
+    await this.audit.record({
+      action: 'attendance_correction.approved',
+      entityType: 'attendance_correction',
+      entityId: id,
+      metadata: {
+        employeeId: approved.employeeId,
+        workDate: approved.workDate,
+        checkInAt: approved.checkInAt,
+        checkOutAt: approved.checkOutAt,
+      },
+    });
     this.notifications.correctionDecided(approved);
     return approved;
   }
@@ -262,6 +275,15 @@ export class AttendanceService {
       id,
       requester.sub,
     );
+    await this.audit.record({
+      action: 'attendance_correction.rejected',
+      entityType: 'attendance_correction',
+      entityId: id,
+      metadata: {
+        employeeId: rejected.employeeId,
+        workDate: rejected.workDate,
+      },
+    });
     this.notifications.correctionDecided(rejected);
     return rejected;
   }

@@ -76,6 +76,12 @@ Standard NestJS module-per-feature layout (`auth`, `user`, `employees`, `departm
 - `ThrottlerGuard` is registered globally as `APP_GUARD` in `app.module.ts` (limits from `THROTTLE_TTL`/`THROTTLE_LIMIT`, converted to ms). Endpoints that must not be rate-limited (e.g. `/health`) need `@SkipThrottle()` from `@nestjs/throttler`.
 - Logging goes through `nestjs-pino` (`LoggerModule.forRootAsync` in `app.module.ts`, `app.useLogger(app.get(Logger))` in `bootstrap.ts`); `Authorization`/`Cookie` headers are redacted. **Never use `console.log`** — inject `Logger`/`PinoLogger` or use Nest's standard logger, which pino now backs.
 
+### Audit log
+
+- `AuditModule` (`src/audit/`, `@Global()`): call `await this.audit.record({ action: '<entity>.<verb>', entityType, entityId, before?, after?, metadata? })` **after** a sensitive change succeeds (salaries, bank accounts, roles, payroll runs, employees, leave decisions/balances/types, corrections, certificates, company, holidays, departments, account/password events). It stores a field-level diff (`audit.util.ts`: drops `password`/timestamps/`tokenHash`, masks `accountNumber`); a failed write is logged, never thrown.
+- The actor and IP come from `requestContextMiddleware` (AsyncLocalStorage, registered in `createApp()`), read lazily so `request.user` from `AuthGuard` is visible; unauthenticated actions (password reset) have a null actor.
+- `GET /audit-logs` is Admin-only; filters: actor, action, entity type/id, `from`/`to` local days (converted in SQL with `AT TIME ZONE`).
+
 ### Documents (PDF)
 
 - `src/common/pdf/`: `renderPdf()` builds an A4 PDF in memory with pdfkit (built-in Helvetica, so Latin text only); `letterhead()`, `details()`, `amountTable()`, `paragraph()` give every document the company letterhead and layout. `money.util.ts` formats amounts (lakh/crore grouping and words for BDT/INR) — amounts stay decimal strings, never floats.

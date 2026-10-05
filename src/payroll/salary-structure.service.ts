@@ -2,12 +2,14 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { SalaryStructureRepository } from './salary-structure.repository.js';
 import { EmployeesService } from '../employees/employees.service.js';
 import { CreateSalaryStructureDto } from './dto/salary-structure.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class SalaryStructureService {
   constructor(
     private readonly salaryStructureRepository: SalaryStructureRepository,
     private readonly employeesService: EmployeesService,
+    private readonly audit: AuditService,
   ) {}
 
   async findForEmployee(employeeId: number) {
@@ -32,9 +34,17 @@ export class SalaryStructureService {
         `A salary effective from ${dto.effectiveFrom} already exists for this employee`,
       );
     }
-    return await this.salaryStructureRepository.create({
+    const salary = await this.salaryStructureRepository.create({
       ...dto,
       employeeId,
     });
+    await this.audit.record({
+      action: 'salary.created',
+      entityType: 'salary_structure',
+      entityId: salary.id,
+      after: salary,
+      metadata: { employeeId },
+    });
+    return salary;
   }
 }

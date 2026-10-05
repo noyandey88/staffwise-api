@@ -14,6 +14,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { UserRole } from '../user/user.types.js';
 import { PasswordResetRepository } from './password-reset.repository.js';
 import { NotificationService } from '../mail/notification.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 /** A user may request a new reset link at most this often. */
 const RESET_REQUEST_COOLDOWN_MS = 60_000;
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly passwordResetRepository: PasswordResetRepository,
     private readonly notifications: NotificationService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -45,6 +47,12 @@ export class AuthService {
       password: hash,
     });
 
+    await this.audit.record({
+      action: 'user.created',
+      entityType: 'user',
+      entityId: user.id,
+      after: user,
+    });
     const token = await this.issuePasswordToken(user.id, 'setup');
     this.notifications.accountCreated(user, token);
     return user;
@@ -97,6 +105,11 @@ export class AuthService {
 
     await this.userService.setPassword(userId, newPassword);
     await this.refreshTokenRepository.revokeAllForUser(userId);
+    await this.audit.record({
+      action: 'user.password_reset',
+      entityType: 'user',
+      entityId: userId,
+    });
   }
 
   private async issuePasswordToken(userId: number, purpose: 'reset' | 'setup') {
@@ -174,6 +187,11 @@ export class AuthService {
   ) {
     await this.userService.changePassword(userId, currentPassword, newPassword);
     await this.refreshTokenRepository.revokeAllForUser(userId);
+    await this.audit.record({
+      action: 'user.password_changed',
+      entityType: 'user',
+      entityId: userId,
+    });
   }
 
   async logout(userId: number) {

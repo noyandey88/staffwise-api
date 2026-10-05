@@ -8,12 +8,14 @@ import { CalendarRepository } from './calendar.repository.js';
 import { CompanyService } from '../company/company.service.js';
 import { DEFAULT_WEEKEND_DAYS } from './calendar.constants.js';
 import { CreateHolidayDto, UpdateHolidayDto } from './dto/holiday.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class CalendarService {
   constructor(
     private readonly calendarRepository: CalendarRepository,
     private readonly companyService: CompanyService,
+    private readonly audit: AuditService,
   ) {}
 
   async weekendDays(): Promise<readonly number[]> {
@@ -45,11 +47,17 @@ export class CalendarService {
     if (!holiday) {
       throw new ConflictException(`A holiday on ${dto.date} already exists`);
     }
+    await this.audit.record({
+      action: 'holiday.created',
+      entityType: 'holiday',
+      entityId: holiday.id,
+      after: holiday,
+    });
     return holiday;
   }
 
   async updateHoliday(id: number, dto: UpdateHolidayDto) {
-    await this.findHoliday(id);
+    const before = await this.findHoliday(id);
     if (dto.date === undefined && dto.name === undefined) {
       return this.findHoliday(id);
     }
@@ -60,12 +68,25 @@ export class CalendarService {
     if (holiday === null) {
       throw new ConflictException(`A holiday on ${dto.date} already exists`);
     }
+    await this.audit.record({
+      action: 'holiday.updated',
+      entityType: 'holiday',
+      entityId: id,
+      before,
+      after: holiday,
+    });
     return holiday;
   }
 
   async removeHoliday(id: number) {
-    await this.findHoliday(id);
+    const before = await this.findHoliday(id);
     await this.calendarRepository.removeHoliday(id);
+    await this.audit.record({
+      action: 'holiday.deleted',
+      entityType: 'holiday',
+      entityId: id,
+      before,
+    });
   }
 
   private async findHoliday(id: number) {

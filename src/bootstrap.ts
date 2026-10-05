@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { requestContextMiddleware } from './audit/request-context.js';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
@@ -21,6 +22,8 @@ export async function createApp(): Promise<INestApplication> {
   app.enableShutdownHooks();
 
   app.use(helmet());
+  // Lets AuditService find the acting user without threading it through calls.
+  app.use(requestContextMiddleware);
 
   const configService = app.get(ConfigService);
   const corsOrigins = (configService.get<string>('CORS_ORIGINS') ?? '')

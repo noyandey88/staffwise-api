@@ -20,6 +20,7 @@ import { NoticeModule } from './notice/notice.module.js';
 import { CalendarModule } from './calendar/calendar.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { SalaryCertificateModule } from './certificate/salary-certificate.module.js';
+import { AuditModule } from './audit/audit.module.js';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SalaryCertificateModule } from './certificate/salary-certificate.module
     CalendarModule,
     MailModule,
     SalaryCertificateModule,
+    AuditModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   controllers: [],

@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CompanyRepository } from './company.repository.js';
 import { UpsertCompanyDto } from './dto/upsert-company.dto.js';
 import { DEFAULT_WEEKEND_DAYS } from '../calendar/calendar.constants.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class CompanyService {
-  constructor(private readonly companyRepository: CompanyRepository) {}
+  constructor(
+    private readonly companyRepository: CompanyRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   async find() {
     const profile = await this.companyRepository.find();
@@ -34,7 +38,8 @@ export class CompanyService {
 
   /** PUT semantics: omitted optional fields are cleared. */
   async upsert(dto: UpsertCompanyDto) {
-    return await this.companyRepository.upsert({
+    const before = await this.companyRepository.find();
+    const after = await this.companyRepository.upsert({
       legalName: dto.legalName,
       displayName: dto.displayName,
       logoUrl: dto.logoUrl ?? null,
@@ -51,5 +56,13 @@ export class CompanyService {
       currency: dto.currency ?? 'BDT',
       weekendDays: [...(dto.weekendDays ?? DEFAULT_WEEKEND_DAYS)].sort(),
     });
+    await this.audit.record({
+      action: before ? 'company.updated' : 'company.created',
+      entityType: 'company',
+      entityId: after.id,
+      before,
+      after,
+    });
+    return after;
   }
 }
