@@ -169,6 +169,13 @@
       "when": 1791179684486,
       "tag": "0023_leave_request_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791180237325,
+      "tag": "0024_charming_arclight",
+      "breakpoints": true
     }
   ]
 }

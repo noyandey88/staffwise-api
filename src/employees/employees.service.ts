@@ -52,6 +52,11 @@ export class EmployeesService {
     return employee;
   }
 
+  /** For callers that may have no employee record (e.g. the super admin). */
+  async findOptionalByUserId(userId: number) {
+    return await this.employeesRepository.findByUserId(userId);
+  }
+
   async update(data: UpdateEmployeeDto) {
     // id is an identity column (GENERATED ALWAYS), so it must not be in the SET clause
     const { id, ...changes } = data;
