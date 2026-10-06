@@ -21,7 +21,6 @@ import {
   ReportsQueryDto,
 } from './dto/org-chart.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { type JwtPayload } from '../auth/auth.types.js';
 import { EmployeeListQueryDto } from './dto/employee-list-query.dto.js';
 import { UpcomingBirthdaysQueryDto } from './dto/upcoming-birthdays-query.dto.js';
 import { UpcomingBirthdayResponseDto } from './dto/upcoming-birthday-response.dto.js';
@@ -142,23 +141,6 @@ export class EmployeesController {
     @Body() dto: EmployeeContactDto,
   ) {
     return await this.employeesService.updateMyProfile(userId, dto);
-  }
-
-  @Get('/:id/profile')
-  @ApiOperation({
-    summary: "An employee's full profile",
-    description:
-      'Admin/HR: anyone. Others: themselves; managers also their (recursive) reports.',
-  })
-  @ApiEnvelope(EmployeeProfileDto, {
-    message: 'Profile retrieved successfully',
-  })
-  @ApiErrorResponses(HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND)
-  async profile(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return await this.employeesService.findProfile(user, id);
   }
 
   // Last: a param route would otherwise shadow /org-chart and friends.

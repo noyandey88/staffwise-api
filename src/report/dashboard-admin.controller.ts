@@ -1,11 +1,14 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { UserRole } from '../user/user.types.js';
 import { ReportService } from './report.service.js';
-import { OverviewDto } from './dto/report.dto.js';
+import { OverviewDto, TeamDashboardDto } from './dto/report.dto.js';
+import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { type JwtPayload } from '../auth/auth.types.js';
 
 @Auth()
 @ApiTags('Admin · Dashboard & reports')
@@ -23,5 +26,20 @@ export class DashboardAdminController {
   @ApiEnvelope(OverviewDto, { message: 'Dashboard retrieved successfully' })
   overview() {
     return this.service.overview();
+  }
+
+  @Get('team')
+  @Roles(UserRole.Manager, UserRole.Admin, UserRole.Hr)
+  @ApiOperation({
+    summary: 'My team dashboard',
+    description:
+      "Today's status and open requests for your direct and indirect reports.",
+  })
+  @ApiEnvelope(TeamDashboardDto, {
+    message: 'Dashboard retrieved successfully',
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  team(@CurrentUser() user: JwtPayload) {
+    return this.service.team(user);
   }
 }

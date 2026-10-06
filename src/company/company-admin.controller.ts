@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Put,
   UploadedFile,
+  Get,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiFileUpload } from '../common/decorators/api-file-upload.decorator.js';
@@ -61,5 +62,17 @@ export class CompanyAdminController {
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   upsert(@Body() dto: UpsertCompanyDto) {
     return this.companyService.upsert(dto);
+  }
+
+  @Get()
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @Auth()
+  @ApiOperation({ summary: 'Company profile' })
+  @ApiEnvelope(CompanyResponseDto, {
+    message: 'Company profile retrieved successfully',
+  })
+  @ApiErrorResponses(HttpStatus.NOT_FOUND)
+  async find() {
+    return this.companyService.toResponse(await this.companyService.find());
   }
 }

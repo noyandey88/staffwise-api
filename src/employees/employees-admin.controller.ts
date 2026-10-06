@@ -15,6 +15,7 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto.js';
 import {
   EmployeeResponseDto,
   DepartmentHistoryEntryDto,
+  EmployeeProfileDto,
 } from './dto/employee-response.dto.js';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
@@ -22,6 +23,8 @@ import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { UserRole } from '../user/user.types.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { type JwtPayload } from '../auth/auth.types.js';
 
 @ApiTags('Admin · Employees')
 @Auth()
@@ -91,5 +94,23 @@ export class EmployeesAdminController {
   })
   async delete(@Param('id', ParseIntPipe) id: number) {
     return await this.employeesService.delete(id);
+  }
+
+  @Get(':id/profile')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: "An employee's full profile",
+    description:
+      'Admin/HR: anyone. Others: themselves; managers also their (recursive) reports.',
+  })
+  @ApiEnvelope(EmployeeProfileDto, {
+    message: 'Profile retrieved successfully',
+  })
+  @ApiErrorResponses(HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND)
+  async profile(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return await this.employeesService.findProfile(user, id);
   }
 }

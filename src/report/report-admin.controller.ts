@@ -14,7 +14,10 @@ import {
   MonthReportQueryDto,
   PayrollReportRowDto,
   YearReportQueryDto,
+  WorkModeReportRowDto,
 } from './dto/report.dto.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { type JwtPayload } from '../auth/auth.types.js';
 
 @Auth()
 @ApiTags('Admin · Dashboard & reports')
@@ -75,5 +78,25 @@ export class ReportsAdminController {
   @ApiErrorResponses(HttpStatus.BAD_REQUEST)
   payroll(@Query() query: YearReportQueryDto) {
     return this.service.payroll(query.year, query.format);
+  }
+
+  @Get('work-modes')
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @ApiOperation({
+    summary: 'Office vs remote days and arrangement compliance',
+    description:
+      'Per employee for the month up to today. Admin/HR: everyone; managers: their reports.',
+  })
+  @ApiProduces('application/json', 'text/csv')
+  @ApiEnvelope(WorkModeReportRowDto, {
+    message: 'Report generated',
+    isArray: true,
+  })
+  @ApiErrorResponses(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND)
+  workModes(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: MonthReportQueryDto,
+  ) {
+    return this.service.workModes(user, query.month, query.format);
   }
 }

@@ -5,14 +5,10 @@ import {
   ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
-import { Auth } from '../common/decorators/auth.decorator.js';
 import { ApiEnvelope } from '../common/decorators/api-envelope.decorator.js';
 import { ApiErrorResponses } from '../common/decorators/api-error-responses.decorator.js';
 import { CompanyService } from './company.service.js';
-import {
-  BrandingResponseDto,
-  CompanyResponseDto,
-} from './dto/company-response.dto.js';
+import { BrandingResponseDto } from './dto/company-response.dto.js';
 
 @ApiTags('Company')
 @Controller('company')
@@ -41,16 +37,5 @@ export class CompanyController {
   @ApiErrorResponses(HttpStatus.NOT_FOUND)
   logo() {
     return this.companyService.logo();
-  }
-
-  @Get()
-  @Auth()
-  @ApiOperation({ summary: 'Company profile' })
-  @ApiEnvelope(CompanyResponseDto, {
-    message: 'Company profile retrieved successfully',
-  })
-  @ApiErrorResponses(HttpStatus.NOT_FOUND)
-  async find() {
-    return this.companyService.toResponse(await this.companyService.find());
   }
 }

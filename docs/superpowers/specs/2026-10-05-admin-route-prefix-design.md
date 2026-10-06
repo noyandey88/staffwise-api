@@ -9,7 +9,7 @@ Put back-office endpoints under `/api/admin/...` so the admin console and the em
 ## Rules
 
 1. **`/admin`**: everything that is Admin/HR-only and manages the organisation — configuration, payroll, org-wide lists, other people's records, HR-only decisions (certificates, separations), audit log, company dashboard and reports.
-2. **Stays shared**: public endpoints; self-service (`/…/me`, check-in, requests, cancelling your own); reads employees need (holidays, work weeks, leave types, notice feed, directory, org chart, photos); and anything **managers** can use for their reports (approvals, request lists, team dashboard, attendance views, the work-mode report) — those are not admin-only, so moving them would make managers "admin".
+2. **Stays shared — user-centric only** *(revised 2026-10-06)*: public endpoints; the caller acting on **their own** data (`/…/me`, check-in, submitting or cancelling their own requests, their own documents, payslips, certificates and settlement); and read-only data every employee needs (directory, org chart, holidays, work weeks, leave types, notice feed, birthdays, photos, branding). Everything that reviews, approves or reads **other people's** records — including what managers use for their reports — is under `/admin`; managers keep access through their role (later: permissions). No `/admin` route admits a plain employee.
 3. **One resource, two audiences** is fine: `GET /holidays` (everyone) and `POST /admin/holidays` (management).
 4. **Fix verb-style paths in the same break**: `/employees/get/all` → `GET /employees`, `/employees/create` → `POST /admin/employees`, `/employees/update` (id in body) → `PATCH /admin/employees/:id`; same for departments.
 5. **Self-service paths keep their shape** (`/leave/me`, `/attendance/me`, …): already consistent; moving them to `/me/...` would be churn without benefit.
@@ -17,9 +17,9 @@ Put back-office endpoints under `/api/admin/...` so the admin console and the em
 
 ## Summary
 
-156 routes: **81 move to `/admin`**, 4 shared routes drop verb-style paths, 71 unchanged. Checked mechanically: no collisions, every Admin/HR-only route ends up under `/admin`, no manager-usable route moves into it.
+156 routes: **98 under `/admin`**, 58 shared. First pass (2026-10-05): 81 Admin/HR-only routes moved and 4 shared routes lost verb-style paths. Second pass (2026-10-06, revised rule 2): 17 manager-scoped and other-people's-records routes moved, and 3 of them gained a role restriction so that no `/admin` route admits a plain employee. Checked mechanically each time: no collisions, no unintended role changes, runtime routes equal the map.
 
-## Routes that change
+## Routes that change — first pass (2026-10-05)
 
 | Method | Old path | New path | Who |
 |---|---|---|---|
@@ -109,85 +109,97 @@ Put back-office endpoints under `/api/admin/...` so the admin console and the em
 | GET | `/reports/leave` | `/admin/reports/leave` | Admin, Hr |
 | GET | `/reports/payroll` | `/admin/reports/payroll` | Admin, Hr |
 
-## Routes that stay
+## Routes that change — second pass (2026-10-06)
+
+| Method | Old path | New path |
+|---|---|---|
+| GET | `/attendance/corrections` | `/admin/attendance/corrections` |
+| PATCH | `/attendance/corrections/:id/approve` | `/admin/attendance/corrections/:id/approve` |
+| PATCH | `/attendance/corrections/:id/reject` | `/admin/attendance/corrections/:id/reject` |
+| GET | `/attendance/employee/:id` | `/admin/attendance/employees/:id` |
+| GET | `/attendance/employee/:id/days` | `/admin/attendance/employees/:id/days` |
+| GET | `/company` | `/admin/company` |
+| GET | `/dashboard/team` | `/admin/dashboard/team` |
+| GET | `/employees/:id/profile` | `/admin/employees/:id/profile` |
+| GET | `/employees/:id/work-arrangement` | `/admin/employees/:id/work-arrangement` |
+| GET | `/leave/requests` | `/admin/leave/requests` |
+| PATCH | `/leave/:id/approve` | `/admin/leave/requests/:id/approve` |
+| PATCH | `/leave/:id/reject` | `/admin/leave/requests/:id/reject` |
+| GET | `/leave/pending` | `/admin/leave/requests/pending` |
+| GET | `/remote-work/requests` | `/admin/remote-work/requests` |
+| PATCH | `/remote-work/requests/:id/approve` | `/admin/remote-work/requests/:id/approve` |
+| PATCH | `/remote-work/requests/:id/reject` | `/admin/remote-work/requests/:id/reject` |
+| GET | `/reports/work-modes` | `/admin/reports/work-modes` |
+
+Role tightened in the same pass (each has a self-service equivalent): `GET /admin/company` → Admin, HR (employees use `/company/branding`, `/company/logo`); `GET /admin/employees/:id/profile` and `GET /admin/employees/:id/work-arrangement` → Admin, HR, Manager (employees use `/employees/me/...`). Managers' own scoping (only their reports) is unchanged.
+
+## Routes that stay (current)
 
 | Method | Path | Who | Why it stays |
 |---|---|---|---|
-| GET | `/attendance-policies` | signed-in | employees read it |
-| POST | `/attendance/check-in` | signed-in | self-service |
-| POST | `/attendance/check-out` | signed-in | self-service |
-| GET | `/attendance/corrections` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| POST | `/attendance/corrections` | signed-in | self-service |
-| PATCH | `/attendance/corrections/:id/approve` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| PATCH | `/attendance/corrections/:id/cancel` | signed-in | self-service |
-| PATCH | `/attendance/corrections/:id/reject` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/attendance/corrections/me` | signed-in | self-service |
-| GET | `/attendance/employee/:id` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/attendance/employee/:id/days` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/attendance/me` | signed-in | self-service |
-| GET | `/attendance/me/days` | signed-in | self-service |
+| GET | `/attendance-policies` | signed-in | read-only data every employee needs |
+| POST | `/attendance/check-in` | signed-in | own data (self-service) |
+| POST | `/attendance/check-out` | signed-in | own data (self-service) |
+| POST | `/attendance/corrections` | signed-in | own data (self-service) |
+| PATCH | `/attendance/corrections/:id/cancel` | signed-in | own data (self-service) |
+| GET | `/attendance/corrections/me` | signed-in | own data (self-service) |
+| GET | `/attendance/me` | signed-in | own data (self-service) |
+| GET | `/attendance/me/days` | signed-in | own data (self-service) |
 | POST | `/auth/access-token/refresh` | public | public |
 | POST | `/auth/login` | public | public |
-| POST | `/auth/logout` | signed-in | self-service |
-| PATCH | `/auth/password` | signed-in | self-service |
+| POST | `/auth/logout` | signed-in | own data (self-service) |
+| PATCH | `/auth/password` | signed-in | own data (self-service) |
 | POST | `/auth/password/forgot` | public | public |
 | POST | `/auth/password/reset` | public | public |
-| GET | `/company` | signed-in | employees read it |
 | GET | `/company/branding` | public | public |
 | GET | `/company/logo` | public | public |
-| GET | `/dashboard/team` | Manager, Admin, Hr | managers use it, scoped to their reports |
-| DELETE | `/documents/:id` | signed-in | the owner, or Admin/HR |
-| GET | `/documents/:id/download` | signed-in | the owner, or Admin/HR |
-| GET | `/employees/:id/managers` | signed-in | employees read it |
-| GET | `/employees/:id/photo` | signed-in | employees read it |
-| GET | `/employees/:id/profile` | signed-in | the employee, their managers, or Admin/HR |
-| GET | `/employees/:id/reports` | signed-in | employees read it |
-| GET | `/employees/:id/work-arrangement` | signed-in | the employee, their managers, or Admin/HR |
-| GET | `/employees/birthdays/upcoming` | signed-in | employees read it |
-| GET | `/employees/me/documents` | signed-in | self-service |
-| POST | `/employees/me/documents` | signed-in | self-service |
-| GET | `/employees/me/profile` | signed-in | self-service |
-| PATCH | `/employees/me/profile` | signed-in | self-service |
-| GET | `/employees/me/work-arrangement` | signed-in | self-service |
-| GET | `/employees/org-chart` | signed-in | employees read it |
+| GET | `/departments` | signed-in | read-only data every employee needs |
+| GET | `/departments/:id` | signed-in | read-only data every employee needs |
+| DELETE | `/documents/:id` | signed-in | own data (owner; HR also allowed) |
+| GET | `/documents/:id/download` | signed-in | own data (owner; HR also allowed) |
+| GET | `/employees` | signed-in | read-only data every employee needs |
+| GET | `/employees/:id` | signed-in | read-only data every employee needs |
+| GET | `/employees/:id/managers` | signed-in | read-only data every employee needs |
+| GET | `/employees/:id/photo` | signed-in | read-only data every employee needs |
+| GET | `/employees/:id/reports` | signed-in | read-only data every employee needs |
+| GET | `/employees/birthdays/upcoming` | signed-in | read-only data every employee needs |
+| GET | `/employees/me/documents` | signed-in | own data (self-service) |
+| POST | `/employees/me/documents` | signed-in | own data (self-service) |
+| GET | `/employees/me/profile` | signed-in | own data (self-service) |
+| PATCH | `/employees/me/profile` | signed-in | own data (self-service) |
+| GET | `/employees/me/work-arrangement` | signed-in | own data (self-service) |
+| GET | `/employees/org-chart` | signed-in | read-only data every employee needs |
 | GET | `/health` | public | public |
-| GET | `/holidays` | signed-in | employees read it |
-| PATCH | `/leave/:id/approve` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| PATCH | `/leave/:id/cancel` | signed-in | self-service |
-| PATCH | `/leave/:id/reject` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/leave/balances/me` | signed-in | self-service |
-| GET | `/leave/me` | signed-in | self-service |
-| GET | `/leave/pending` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| POST | `/leave/request` | signed-in | self-service |
-| GET | `/leave/requests` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/leave/types` | signed-in | employees read it |
-| GET | `/notices` | signed-in | employees read it |
-| GET | `/notices/:id` | signed-in | employees read it |
-| GET | `/payroll/bank-accounts/me` | signed-in | self-service |
-| GET | `/payroll/payslips/:id/pdf` | signed-in | the owner, or Admin/HR |
-| GET | `/payroll/payslips/me` | signed-in | self-service |
-| GET | `/payroll/salary/me` | signed-in | self-service |
-| GET | `/remote-work/requests` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| POST | `/remote-work/requests` | signed-in | self-service |
-| PATCH | `/remote-work/requests/:id/approve` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| PATCH | `/remote-work/requests/:id/cancel` | signed-in | self-service |
-| PATCH | `/remote-work/requests/:id/reject` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| GET | `/remote-work/requests/me` | signed-in | self-service |
-| GET | `/reports/work-modes` | Admin, Hr, Manager | managers use it, scoped to their reports |
-| PATCH | `/salary-certificates/:id/cancel` | signed-in | self-service |
-| GET | `/salary-certificates/:id/pdf` | signed-in | the owner, or Admin/HR |
-| GET | `/salary-certificates/me` | signed-in | self-service |
-| POST | `/salary-certificates/request` | signed-in | self-service |
-| PATCH | `/separations/:id/cancel` | signed-in | self-service |
-| GET | `/separations/:id/settlement` | signed-in | the owner, or Admin/HR |
-| GET | `/separations/me` | signed-in | self-service |
-| POST | `/separations/resign` | signed-in | self-service |
-| GET | `/users/me` | signed-in | self-service |
-| GET | `/work-weeks` | signed-in | employees read it |
+| GET | `/holidays` | signed-in | read-only data every employee needs |
+| PATCH | `/leave/:id/cancel` | signed-in | own data (self-service) |
+| GET | `/leave/balances/me` | signed-in | own data (self-service) |
+| GET | `/leave/me` | signed-in | own data (self-service) |
+| POST | `/leave/request` | signed-in | own data (self-service) |
+| GET | `/leave/types` | signed-in | read-only data every employee needs |
+| GET | `/notices` | signed-in | read-only data every employee needs |
+| GET | `/notices/:id` | signed-in | read-only data every employee needs |
+| GET | `/payroll/bank-accounts/me` | signed-in | own data (self-service) |
+| GET | `/payroll/payslips/:id/pdf` | signed-in | own data (owner; HR also allowed) |
+| GET | `/payroll/payslips/me` | signed-in | own data (self-service) |
+| GET | `/payroll/salary/me` | signed-in | own data (self-service) |
+| POST | `/remote-work/requests` | signed-in | own data (self-service) |
+| PATCH | `/remote-work/requests/:id/cancel` | signed-in | own data (self-service) |
+| GET | `/remote-work/requests/me` | signed-in | own data (self-service) |
+| PATCH | `/salary-certificates/:id/cancel` | signed-in | own data (self-service) |
+| GET | `/salary-certificates/:id/pdf` | signed-in | own data (owner; HR also allowed) |
+| GET | `/salary-certificates/me` | signed-in | own data (self-service) |
+| POST | `/salary-certificates/request` | signed-in | own data (self-service) |
+| PATCH | `/separations/:id/cancel` | signed-in | own data (self-service) |
+| GET | `/separations/:id/settlement` | signed-in | own data (owner; HR also allowed) |
+| GET | `/separations/me` | signed-in | own data (self-service) |
+| POST | `/separations/resign` | signed-in | own data (self-service) |
+| GET | `/users/me` | signed-in | own data (self-service) |
+| GET | `/work-weeks` | signed-in | read-only data every employee needs |
 
 ## Implementation
 
 - **Nested routes with `RouterModule`** (Nest's mechanism for module-based prefixes): `src/admin/admin.routes.ts` registers `{ path: 'admin', module: AdminModule, children: [...] }`. Each feature with admin routes gets a `<Feature>AdminModule` holding its `*-admin.controller.ts` controllers and importing the feature module (which exports its services); feature modules whose only controller is admin (offices, payroll policy, audit log) are children themselves. Admin controllers declare only their area (`@Controller('leave')`), so the `admin` prefix is defined once. Controllers spanning two areas were split (holidays / work weeks, dashboard / reports). Handlers moved with their decorators unchanged, so the permission work later touches each handler once.
+- **Second pass** reused the same mechanics: handlers moved into the existing admin controllers, plus `RemoteWorkAdminController` and `EmployeeWorkArrangementAdminController` (in `WorkModeAdminModule`); `ReportController` became empty and was removed.
 - **Path params instead of body ids** for `PATCH /admin/employees/:id` and `PATCH /admin/departments/:id` (`UpdateEmployeeDto`/`UpdateDepartmentDto` lose `id`).
 - **Two Swagger documents**: `/docs` (app) and `/docs/admin` (admin), split by path prefix from one generated document; `/api` keeps serving the full spec.
 - **Throttling/logging unchanged** for now; the prefix makes per-area rules a one-liner later.
