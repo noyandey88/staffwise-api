@@ -9,5 +9,6 @@ import { DocumentRepository } from './document.repository.js';
   imports: [EmployeesModule, UploadLimitsModule],
   controllers: [DocumentController],
   providers: [DocumentService, DocumentRepository],
+  exports: [DocumentService],
 })
 export class DocumentModule {}

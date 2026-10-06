@@ -17,5 +17,6 @@ import { SeparationScheduler } from './separation.scheduler.js';
   ],
   controllers: [SeparationController],
   providers: [SeparationService, SeparationRepository, SeparationScheduler],
+  exports: [SeparationService],
 })
 export class SeparationModule {}

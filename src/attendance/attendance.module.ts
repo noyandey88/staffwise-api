@@ -10,5 +10,6 @@ import { OfficeModule } from '../office/office.module.js';
   imports: [EmployeesModule, WorkModeModule, OfficeModule],
   controllers: [AttendanceController],
   providers: [AttendanceService, AttendanceRepository],
+  exports: [AttendanceService],
 })
 export class AttendanceModule {}

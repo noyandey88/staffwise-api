@@ -9,5 +9,6 @@ import { SalaryCertificateRepository } from './salary-certificate.repository.js'
   imports: [EmployeesModule, CompanyModule],
   controllers: [SalaryCertificateController],
   providers: [SalaryCertificateService, SalaryCertificateRepository],
+  exports: [SalaryCertificateService],
 })
 export class SalaryCertificateModule {}

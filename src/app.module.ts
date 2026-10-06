@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, RouterModule } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module.js';
@@ -29,9 +29,13 @@ import { ReportModule } from './report/report.module.js';
 import { AttendancePolicyModule } from './attendance-policy/attendance-policy.module.js';
 import { WorkModeModule } from './work-mode/work-mode.module.js';
 import { OfficeModule } from './office/office.module.js';
+import { AdminModule } from './admin/admin.module.js';
+import { ADMIN_ROUTES } from './admin/admin.routes.js';
 
 @Module({
   imports: [
+    AdminModule,
+    RouterModule.register(ADMIN_ROUTES),
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,

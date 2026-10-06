@@ -1,13 +1,10 @@
 import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './create-employee.dto.js';
-import { IsInt, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsOptional } from 'class-validator';
 import { IsDateOnly } from '../../common/decorators/is-date-only.decorator.js';
 
+/** The employee id comes from the path (PATCH /admin/employees/:id). */
 export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
-  @IsInt()
-  @IsNotEmpty()
-  id!: number;
-
   @ApiPropertyOptional({
     example: '2026-10-01',
     description:

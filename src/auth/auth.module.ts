@@ -23,5 +23,6 @@ import { PasswordResetRepository } from './password-reset.repository.js';
   ],
   controllers: [AuthController],
   providers: [AuthService, RefreshTokenRepository, PasswordResetRepository],
+  exports: [AuthService],
 })
 export class AuthModule {}

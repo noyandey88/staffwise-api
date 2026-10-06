@@ -23,7 +23,7 @@ import {
 
 @Auth()
 @Roles(UserRole.Admin, UserRole.Hr)
-@ApiTags('Offices')
+@ApiTags('Admin · Offices')
 @Controller('offices')
 export class OfficeController {
   constructor(private readonly service: OfficeService) {}
@@ -55,7 +55,7 @@ export class OfficeController {
     return this.service.create(dto);
   }
 
-  @Patch('/:id')
+  @Patch(':id')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Update an office',

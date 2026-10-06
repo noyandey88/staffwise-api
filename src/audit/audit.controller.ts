@@ -10,7 +10,7 @@ import { AuditLogQueryDto, AuditLogResponseDto } from './dto/audit-log.dto.js';
 
 @Auth()
 @Roles(UserRole.Admin)
-@ApiTags('Audit log')
+@ApiTags('Admin · Audit log')
 @Controller('audit-logs')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

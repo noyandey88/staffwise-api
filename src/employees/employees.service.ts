@@ -296,9 +296,8 @@ export class EmployeesService {
     return await this.employeesRepository.findByUserId(userId);
   }
 
-  async update(data: UpdateEmployeeDto) {
-    // id is an identity column (GENERATED ALWAYS), so it must not be in the SET clause
-    const { id, transferDate, ...changes } = data;
+  async update(id: number, data: UpdateEmployeeDto) {
+    const { transferDate, ...changes } = data;
     const existing = await this.findById(id);
     if (changes.employeeCode !== existing.employeeCode) {
       this.assertCustomCode(changes.employeeCode ?? undefined);

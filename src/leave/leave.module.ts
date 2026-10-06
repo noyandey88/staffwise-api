@@ -9,5 +9,6 @@ import { CalendarModule } from '../calendar/calendar.module.js';
   imports: [EmployeesModule, CalendarModule],
   controllers: [LeaveController],
   providers: [LeaveService, LeaveRepository],
+  exports: [LeaveService],
 })
 export class LeaveModule {}

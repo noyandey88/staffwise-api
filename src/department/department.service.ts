@@ -51,11 +51,9 @@ export class DepartmentService {
     return department;
   }
 
-  async update(updateDepartmentDto: UpdateDepartmentDto) {
-    const before = await this.findById(updateDepartmentDto.id);
-
-    const { id, ...rest } = updateDepartmentDto;
-    const department = await this.departmentRepository.update(id, rest);
+  async update(id: number, dto: UpdateDepartmentDto) {
+    const before = await this.findById(id);
+    const department = await this.departmentRepository.update(id, { ...dto });
     await this.audit.record({
       action: 'department.updated',
       entityType: 'department',

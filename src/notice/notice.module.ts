@@ -9,5 +9,6 @@ import { DepartmentModule } from '../department/department.module.js';
   imports: [EmployeesModule, DepartmentModule],
   controllers: [NoticeController],
   providers: [NoticeService, NoticeRepository],
+  exports: [NoticeService],
 })
 export class NoticeModule {}
