@@ -25,11 +25,11 @@ import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
 
 @Auth()
 @ApiTags('Admin · Notices')
-@Controller('admin')
+@Controller('notices')
 export class NoticeAdminController {
   constructor(private readonly noticeService: NoticeService) {}
 
-  @Post('notices')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Publish a notice',
@@ -48,7 +48,7 @@ export class NoticeAdminController {
     return await this.noticeService.create(userId, dto);
   }
 
-  @Get('notices')
+  @Get()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'All notices, scheduled and expired included',
@@ -62,7 +62,7 @@ export class NoticeAdminController {
     return await this.noticeService.findAll(query);
   }
 
-  @Patch('notices/:id')
+  @Patch(':id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Update a notice' })
   @ApiEnvelope(NoticeResponseDto, {
@@ -76,7 +76,7 @@ export class NoticeAdminController {
     return await this.noticeService.update(id, dto);
   }
 
-  @Delete('notices/:id')
+  @Delete(':id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Delete a notice' })
   @ApiEnvelope(null, { message: 'Notice deleted successfully' })

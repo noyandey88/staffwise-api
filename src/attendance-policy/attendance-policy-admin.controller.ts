@@ -22,11 +22,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Attendance policy')
-@Controller('admin')
+@Controller('attendance-policies')
 export class AttendancePolicyAdminController {
   constructor(private readonly service: AttendancePolicyService) {}
 
-  @Post('attendance-policies')
+  @Post()
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Set the attendance policy from a date',
@@ -46,7 +46,7 @@ export class AttendancePolicyAdminController {
     return this.service.create(userId, dto);
   }
 
-  @Delete('attendance-policies/:id')
+  @Delete(':id')
   @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Cancel a scheduled (future) attendance policy' })
   @ApiEnvelope(null, { message: 'Attendance policy removed' })

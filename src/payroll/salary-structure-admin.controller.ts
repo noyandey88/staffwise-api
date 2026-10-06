@@ -21,13 +21,13 @@ import {
 
 @Auth()
 @ApiTags('Admin · Payroll')
-@Controller('admin')
+@Controller('payroll')
 export class SalaryStructureAdminController {
   constructor(
     private readonly salaryStructureService: SalaryStructureService,
   ) {}
 
-  @Get('payroll/employees/:employeeId/salary')
+  @Get('employees/:employeeId/salary')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "An employee's salary history (newest first)" })
   @ApiEnvelope(SalaryStructureResponseDto, {
@@ -39,7 +39,7 @@ export class SalaryStructureAdminController {
     return this.salaryStructureService.findForEmployee(employeeId);
   }
 
-  @Post('payroll/employees/:employeeId/salary')
+  @Post('employees/:employeeId/salary')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Set a salary for an employee from a given date',

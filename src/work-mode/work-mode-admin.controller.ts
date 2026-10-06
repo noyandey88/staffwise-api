@@ -17,7 +17,6 @@ import { ApiErrorResponses } from '../common/decorators/api-error-responses.deco
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { UserRole } from '../user/user.types.js';
 import { WorkModeService } from './work-mode.service.js';
-import { RemoteWorkService } from './remote-work.service.js';
 import {
   CreateWorkArrangementDto,
   WorkArrangementQueryDto,
@@ -26,14 +25,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Work modes')
-@Controller('admin')
+@Controller('work-arrangements')
 export class WorkModeAdminController {
-  constructor(
-    private readonly service: WorkModeService,
-    private readonly remoteWork: RemoteWorkService,
-  ) {}
+  constructor(private readonly service: WorkModeService) {}
 
-  @Get('work-arrangements')
+  @Get()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Work arrangements (company, department, employee)',
@@ -47,7 +43,7 @@ export class WorkModeAdminController {
     return this.service.list(query);
   }
 
-  @Post('work-arrangements')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Set a work arrangement from a date',
@@ -71,7 +67,7 @@ export class WorkModeAdminController {
     return this.service.create(userId, dto);
   }
 
-  @Delete('work-arrangements/:id')
+  @Delete(':id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Cancel a scheduled (future) work arrangement' })
   @ApiEnvelope(null, { message: 'Work arrangement removed' })

@@ -30,11 +30,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Separations')
-@Controller('admin')
+@Controller('separations')
 export class SeparationAdminController {
   constructor(private readonly service: SeparationService) {}
 
-  @Get('separations')
+  @Get()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'All separations' })
   @ApiEnvelope(SeparationResponseDto, {
@@ -46,7 +46,7 @@ export class SeparationAdminController {
     return this.service.list(query);
   }
 
-  @Post('separations')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Record a separation (approved)',
@@ -68,7 +68,7 @@ export class SeparationAdminController {
     return this.service.createApproved(user, dto);
   }
 
-  @Patch('separations/:id/approve')
+  @Patch(':id/approve')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Approve a resignation',
@@ -90,7 +90,7 @@ export class SeparationAdminController {
     return this.service.approve(user, id, dto);
   }
 
-  @Patch('separations/:id/reject')
+  @Patch(':id/reject')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Reject a resignation' })
   @ApiEnvelope(SeparationResponseDto, { message: 'Separation rejected' })
@@ -106,7 +106,7 @@ export class SeparationAdminController {
     return this.service.reject(user, id);
   }
 
-  @Patch('separations/:id/withdraw')
+  @Patch(':id/withdraw')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Withdraw an approved separation before it takes effect',
@@ -124,7 +124,7 @@ export class SeparationAdminController {
     return this.service.revoke(user, id);
   }
 
-  @Post('separations/:id/settlement/recompute')
+  @Post(':id/settlement/recompute')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Recalculate the draft settlement',
@@ -137,7 +137,7 @@ export class SeparationAdminController {
     return this.service.recompute(id);
   }
 
-  @Put('separations/:id/settlement/adjustments')
+  @Put(':id/settlement/adjustments')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Set manual settlement lines',
@@ -157,7 +157,7 @@ export class SeparationAdminController {
     return this.service.setAdjustments(id, dto);
   }
 
-  @Patch('separations/:id/settlement/finalize')
+  @Patch(':id/settlement/finalize')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Finalize the settlement (locks it)' })
   @ApiEnvelope(SettlementResponseDto, { message: 'Settlement finalized' })
@@ -173,7 +173,7 @@ export class SeparationAdminController {
     return this.service.finalize(user, id);
   }
 
-  @Patch('separations/:id/settlement/mark-paid')
+  @Patch(':id/settlement/mark-paid')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Mark a finalized settlement as paid' })
   @ApiEnvelope(SettlementResponseDto, { message: 'Settlement marked as paid' })

@@ -18,11 +18,11 @@ import { UpsertCompanyDto } from './dto/upsert-company.dto.js';
 import { CompanyResponseDto } from './dto/company-response.dto.js';
 
 @ApiTags('Admin · Company')
-@Controller('admin')
+@Controller('company')
 export class CompanyAdminController {
   constructor(private readonly companyService: CompanyService) {}
 
-  @Put('company/logo')
+  @Put('logo')
   @Auth()
   @Roles(UserRole.Admin)
   @ApiOperation({
@@ -41,7 +41,7 @@ export class CompanyAdminController {
     return this.companyService.uploadLogo(file);
   }
 
-  @Delete('company/logo')
+  @Delete('logo')
   @Auth()
   @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Remove the uploaded logo' })
@@ -51,7 +51,7 @@ export class CompanyAdminController {
     return this.companyService.removeLogo();
   }
 
-  @Put('company')
+  @Put()
   @Auth()
   @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Create or replace the company profile' })

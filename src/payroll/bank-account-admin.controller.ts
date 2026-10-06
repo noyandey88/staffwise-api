@@ -27,11 +27,11 @@ import {
  */
 @Auth()
 @ApiTags('Admin · Payroll')
-@Controller('admin')
+@Controller('payroll')
 export class BankAccountAdminController {
   constructor(private readonly bankAccountService: BankAccountService) {}
 
-  @Get('payroll/employees/:employeeId/bank-accounts')
+  @Get('employees/:employeeId/bank-accounts')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "An employee's salary bank accounts" })
   @ApiEnvelope(BankAccountResponseDto, {
@@ -43,7 +43,7 @@ export class BankAccountAdminController {
     return this.bankAccountService.findForEmployee(employeeId);
   }
 
-  @Post('payroll/employees/:employeeId/bank-accounts')
+  @Post('employees/:employeeId/bank-accounts')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Add a salary bank account for an employee' })
   @ApiEnvelope(BankAccountResponseDto, {
@@ -62,7 +62,7 @@ export class BankAccountAdminController {
     return this.bankAccountService.create(employeeId, dto);
   }
 
-  @Patch('payroll/bank-accounts/:id/primary')
+  @Patch('bank-accounts/:id/primary')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "Make this the employee's salary account" })
   @ApiEnvelope(BankAccountResponseDto, { message: 'Primary account updated' })
@@ -71,7 +71,7 @@ export class BankAccountAdminController {
     return this.bankAccountService.setPrimary(id);
   }
 
-  @Delete('payroll/bank-accounts/:id')
+  @Delete('bank-accounts/:id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Remove a bank account',

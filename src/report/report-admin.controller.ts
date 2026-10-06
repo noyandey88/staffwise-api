@@ -12,30 +12,17 @@ import {
   FormatQueryDto,
   LeaveReportRowDto,
   MonthReportQueryDto,
-  OverviewDto,
   PayrollReportRowDto,
   YearReportQueryDto,
 } from './dto/report.dto.js';
 
 @Auth()
 @ApiTags('Admin · Dashboard & reports')
-@Controller('admin')
-export class ReportAdminController {
+@Controller('reports')
+export class ReportsAdminController {
   constructor(private readonly service: ReportService) {}
 
-  @Get('dashboard')
-  @Roles(UserRole.Admin, UserRole.Hr)
-  @ApiOperation({
-    summary: 'Company dashboard',
-    description:
-      "Headcount, this month's joiners/leavers, today's attendance, pending approvals, latest payroll run, birthdays this week.",
-  })
-  @ApiEnvelope(OverviewDto, { message: 'Dashboard retrieved successfully' })
-  overview() {
-    return this.service.overview();
-  }
-
-  @Get('reports/headcount')
+  @Get('headcount')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Headcount by department and employment type' })
   @ApiProduces('application/json', 'text/csv')
@@ -48,7 +35,7 @@ export class ReportAdminController {
     return this.service.headcount(query.format);
   }
 
-  @Get('reports/attendance')
+  @Get('attendance')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Monthly attendance per employee',
@@ -64,7 +51,7 @@ export class ReportAdminController {
     return this.service.attendance(query.month, query.format);
   }
 
-  @Get('reports/leave')
+  @Get('leave')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Leave taken and remaining per employee and type' })
   @ApiProduces('application/json', 'text/csv')
@@ -77,7 +64,7 @@ export class ReportAdminController {
     return this.service.leave(query.year, query.format);
   }
 
-  @Get('reports/payroll')
+  @Get('payroll')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Payroll cost per month (approved and paid runs)' })
   @ApiProduces('application/json', 'text/csv')

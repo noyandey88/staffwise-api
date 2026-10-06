@@ -33,11 +33,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Leave')
-@Controller('admin')
+@Controller('leave')
 export class LeaveAdminController {
   constructor(private readonly leaveService: LeaveService) {}
 
-  @Post('leave/types')
+  @Post('types')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Create a leave type' })
   @ApiEnvelope(LeaveTypeResponseDto, {
@@ -49,7 +49,7 @@ export class LeaveAdminController {
     return await this.leaveService.createType(dto);
   }
 
-  @Patch('leave/types/:id')
+  @Patch('types/:id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Update a leave type',
@@ -71,7 +71,7 @@ export class LeaveAdminController {
     return await this.leaveService.updateType(id, dto);
   }
 
-  @Post('leave/balances/allocate')
+  @Post('balances/allocate')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Allocate yearly balances',
@@ -88,7 +88,7 @@ export class LeaveAdminController {
     return await this.leaveService.allocate(dto);
   }
 
-  @Put('leave/balances')
+  @Put('balances')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: "Set an employee's remaining days",
@@ -101,7 +101,7 @@ export class LeaveAdminController {
     return await this.leaveService.setBalance(dto);
   }
 
-  @Get('leave/balances/employee/:employeeId')
+  @Get('balances/employee/:employeeId')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "An employee's leave balances for a year" })
   @ApiEnvelope(LeaveBalanceResponseDto, {

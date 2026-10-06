@@ -22,11 +22,11 @@ import { Roles } from '../common/decorators/roles.decorator.js';
 
 @Auth()
 @ApiTags('Admin · Users')
-@Controller('admin')
+@Controller('users')
 export class UserAdminController {
   constructor(private readonly userService: UserService) {}
 
-  @Get('users')
+  @Get()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'List users',
@@ -42,7 +42,7 @@ export class UserAdminController {
     return await this.userService.findPage(query);
   }
 
-  @Patch('users/:id/role')
+  @Patch(':id/role')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: "Change a user's role",

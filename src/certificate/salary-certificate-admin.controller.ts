@@ -26,11 +26,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Salary certificates')
-@Controller('admin')
+@Controller('salary-certificates')
 export class SalaryCertificateAdminController {
   constructor(private readonly service: SalaryCertificateService) {}
 
-  @Get('salary-certificates')
+  @Get()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'All salary certificates and requests' })
   @ApiEnvelope(SalaryCertificateResponseDto, {
@@ -42,7 +42,7 @@ export class SalaryCertificateAdminController {
     return this.service.list(query);
   }
 
-  @Post('salary-certificates')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Issue a salary certificate directly',
@@ -66,7 +66,7 @@ export class SalaryCertificateAdminController {
     return this.service.issueDirect(user, dto);
   }
 
-  @Patch('salary-certificates/:id/issue')
+  @Patch(':id/issue')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Issue a requested salary certificate' })
   @ApiEnvelope(SalaryCertificateResponseDto, {
@@ -84,7 +84,7 @@ export class SalaryCertificateAdminController {
     return this.service.issueRequest(user, id);
   }
 
-  @Patch('salary-certificates/:id/reject')
+  @Patch(':id/reject')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Reject a salary certificate request' })
   @ApiEnvelope(SalaryCertificateResponseDto, {

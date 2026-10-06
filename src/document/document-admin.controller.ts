@@ -25,11 +25,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Employee documents')
-@Controller('admin')
+@Controller('employees')
 export class DocumentAdminController {
   constructor(private readonly service: DocumentService) {}
 
-  @Post('employees/:id/documents')
+  @Post(':id/documents')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "Upload a document to an employee's record" })
   @ApiFileUpload({ fields: UPLOAD_DOCUMENT_FIELDS, required: ['category'] })
@@ -51,7 +51,7 @@ export class DocumentAdminController {
     return this.service.uploadFor(id, file, dto, userId);
   }
 
-  @Get('employees/:id/documents')
+  @Get(':id/documents')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: "An employee's documents" })
   @ApiEnvelope(DocumentResponseDto, {

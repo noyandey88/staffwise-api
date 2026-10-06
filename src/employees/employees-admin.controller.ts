@@ -25,11 +25,11 @@ import { UserRole } from '../user/user.types.js';
 
 @ApiTags('Admin · Employees')
 @Auth()
-@Controller('admin')
+@Controller('employees')
 export class EmployeesAdminController {
   constructor(private readonly employeesService: EmployeesService) {}
 
-  @Post('employees')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Create a new employee',
@@ -43,7 +43,7 @@ export class EmployeesAdminController {
     return await this.employeesService.create(data);
   }
 
-  @Get('employees/:id/department-history')
+  @Get(':id/department-history')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: "An employee's department history",
@@ -59,7 +59,7 @@ export class EmployeesAdminController {
     return await this.employeesService.departmentHistory(id);
   }
 
-  @Patch('employees/:id')
+  @Patch(':id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Update an employee',
@@ -80,7 +80,7 @@ export class EmployeesAdminController {
     return await this.employeesService.update(id, data);
   }
 
-  @Delete('employees/:id')
+  @Delete(':id')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Delete an employee',

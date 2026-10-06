@@ -35,11 +35,11 @@ import { Auth } from '../common/decorators/auth.decorator.js';
 
 @Auth()
 @ApiTags('Admin · Payroll')
-@Controller('admin')
+@Controller('payroll')
 export class PayrollAdminController {
   constructor(private readonly payrollService: PayrollService) {}
 
-  @Post('payroll/runs')
+  @Post('runs')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Generate a payroll run for a month' })
   @ApiEnvelope(PayrollRunResponseDto, {
@@ -51,7 +51,7 @@ export class PayrollAdminController {
     return this.payrollService.generate(dto.month);
   }
 
-  @Get('payroll/runs')
+  @Get('runs')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Payroll runs, newest month first, with totals' })
   @ApiEnvelope(PayrollRunSummaryDto, {
@@ -63,7 +63,7 @@ export class PayrollAdminController {
     return this.payrollService.listRuns(query);
   }
 
-  @Get('payroll/runs/:id')
+  @Get('runs/:id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'A payroll run with its totals' })
   @ApiEnvelope(PayrollRunSummaryDto, {
@@ -74,7 +74,7 @@ export class PayrollAdminController {
     return this.payrollService.runSummary(id);
   }
 
-  @Delete('payroll/runs/:id')
+  @Delete('runs/:id')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Delete a draft run',
@@ -87,7 +87,7 @@ export class PayrollAdminController {
     return null;
   }
 
-  @Patch('payroll/runs/:id/approve')
+  @Patch('runs/:id/approve')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Approve a draft payroll run' })
   @ApiEnvelope(PayrollRunResponseDto, { message: 'Payroll run approved' })
@@ -99,7 +99,7 @@ export class PayrollAdminController {
     return this.payrollService.approve(userId, id);
   }
 
-  @Patch('payroll/runs/:id/mark-paid')
+  @Patch('runs/:id/mark-paid')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Mark an approved run as paid' })
   @ApiEnvelope(PayrollRunResponseDto, { message: 'Payroll run marked as paid' })
@@ -108,7 +108,7 @@ export class PayrollAdminController {
     return this.payrollService.markPaid(id);
   }
 
-  @Get('payroll/runs/:id/bank-file')
+  @Get('runs/:id/bank-file')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Download the bank transfer file (CSV) for an approved run',
@@ -123,7 +123,7 @@ export class PayrollAdminController {
     return this.payrollService.bankFile(id);
   }
 
-  @Get('payroll/runs/:id/payslips')
+  @Get('runs/:id/payslips')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({ summary: 'Payslips for a payroll run' })
   @ApiEnvelope(PayslipResponseDto, {
@@ -135,7 +135,7 @@ export class PayrollAdminController {
     return this.payrollService.payslipsForRun(id);
   }
 
-  @Put('payroll/payslips/:id/adjustments')
+  @Put('payslips/:id/adjustments')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: "Set a draft payslip's one-off adjustments",

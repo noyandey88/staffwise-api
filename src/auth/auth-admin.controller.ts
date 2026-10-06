@@ -12,13 +12,13 @@ import { UserRole } from '../user/user.types.js';
 
 @ApiTags('Admin · Users')
 @Throttle({ default: { limit: 10, ttl: 60_000 } })
-@Controller('admin')
+@Controller('users')
 export class AuthAdminController {
   constructor(private readonly authService: AuthService) {}
 
   @Auth()
   @Roles(UserRole.Admin, UserRole.Hr)
-  @Post('users')
+  @Post()
   @ApiOperation({
     summary: 'Register a new user',
     description:

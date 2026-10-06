@@ -10,11 +10,11 @@ import { UserRole } from '../user/user.types.js';
 
 @Auth()
 @ApiTags('Admin · Attendance')
-@Controller('admin')
+@Controller('attendance')
 export class AttendanceAdminController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  @Get('attendance/summary')
+  @Get('summary')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Monthly attendance summary, ranked by hours worked',

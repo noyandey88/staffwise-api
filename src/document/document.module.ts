@@ -4,11 +4,11 @@ import { EmployeesModule } from '../employees/employees.module.js';
 import { DocumentController } from './document.controller.js';
 import { DocumentService } from './document.service.js';
 import { DocumentRepository } from './document.repository.js';
-import { DocumentAdminController } from './document-admin.controller.js';
 
 @Module({
   imports: [EmployeesModule, UploadLimitsModule],
-  controllers: [DocumentController, DocumentAdminController],
+  controllers: [DocumentController],
   providers: [DocumentService, DocumentRepository],
+  exports: [DocumentService],
 })
 export class DocumentModule {}

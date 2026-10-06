@@ -4,11 +4,11 @@ import { NoticeService } from './notice.service.js';
 import { NoticeRepository } from './notice.repository.js';
 import { EmployeesModule } from '../employees/employees.module.js';
 import { DepartmentModule } from '../department/department.module.js';
-import { NoticeAdminController } from './notice-admin.controller.js';
 
 @Module({
   imports: [EmployeesModule, DepartmentModule],
-  controllers: [NoticeController, NoticeAdminController],
+  controllers: [NoticeController],
   providers: [NoticeService, NoticeRepository],
+  exports: [NoticeService],
 })
 export class NoticeModule {}

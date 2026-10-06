@@ -14,11 +14,11 @@ import {
 
 @Auth()
 @ApiTags('Admin · Payroll policy')
-@Controller('admin')
+@Controller('payroll')
 export class PayrollPolicyController {
   constructor(private readonly service: PayrollPolicyService) {}
 
-  @Get('payroll/policy')
+  @Get('policy')
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Payroll policy',
@@ -32,7 +32,7 @@ export class PayrollPolicyController {
     return this.service.rules();
   }
 
-  @Patch('payroll/policy')
+  @Patch('policy')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Update the payroll policy',

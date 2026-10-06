@@ -28,11 +28,11 @@ import {
 @Auth()
 @Roles(UserRole.Admin, UserRole.Hr)
 @ApiTags('Admin · Payroll components')
-@Controller('admin')
+@Controller('payroll')
 export class PayComponentController {
   constructor(private readonly service: PayComponentService) {}
 
-  @Get('payroll/components')
+  @Get('components')
   @ApiOperation({ summary: 'Pay components (earnings and deductions)' })
   @ApiEnvelope(PayComponentResponseDto, {
     message: 'Pay components retrieved successfully',
@@ -42,7 +42,7 @@ export class PayComponentController {
     return this.service.findAll();
   }
 
-  @Post('payroll/components')
+  @Post('components')
   @ApiOperation({
     summary: 'Create a pay component',
     description:
@@ -58,7 +58,7 @@ export class PayComponentController {
     return this.service.create(dto);
   }
 
-  @Patch('payroll/components/:id')
+  @Patch('components/:id')
   @ApiOperation({ summary: 'Update a pay component' })
   @ApiEnvelope(PayComponentResponseDto, { message: 'Pay component updated' })
   @ApiErrorResponses(
@@ -73,7 +73,7 @@ export class PayComponentController {
     return this.service.update(id, dto);
   }
 
-  @Get('payroll/employees/:employeeId/components')
+  @Get('employees/:employeeId/components')
   @ApiOperation({ summary: "An employee's component assignments" })
   @ApiEnvelope(EmployeePayComponentResponseDto, {
     message: 'Assignments retrieved successfully',
@@ -84,7 +84,7 @@ export class PayComponentController {
     return this.service.assignments(employeeId);
   }
 
-  @Post('payroll/employees/:employeeId/components')
+  @Post('employees/:employeeId/components')
   @ApiOperation({
     summary: 'Assign a component to an employee',
     description:
@@ -103,7 +103,7 @@ export class PayComponentController {
     return this.service.assign(employeeId, dto);
   }
 
-  @Patch('payroll/employee-components/:id')
+  @Patch('employee-components/:id')
   @ApiOperation({ summary: 'Update an assignment' })
   @ApiEnvelope(EmployeePayComponentResponseDto, {
     message: 'Assignment updated',
@@ -116,7 +116,7 @@ export class PayComponentController {
     return this.service.updateAssignment(id, dto);
   }
 
-  @Delete('payroll/employee-components/:id')
+  @Delete('employee-components/:id')
   @ApiOperation({ summary: 'Remove an assignment' })
   @ApiEnvelope(null, { message: 'Assignment removed' })
   @ApiErrorResponses(HttpStatus.NOT_FOUND)

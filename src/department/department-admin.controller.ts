@@ -21,11 +21,11 @@ import { DepartmentResponseDto } from './dto/department-response.dto.js';
 
 @Auth()
 @ApiTags('Admin · Departments')
-@Controller('admin')
+@Controller('departments')
 export class DepartmentAdminController {
   constructor(private readonly departmentService: DepartmentService) {}
 
-  @Post('departments')
+  @Post()
   @Roles(UserRole.Admin, UserRole.Hr)
   @ApiOperation({
     summary: 'Create a new department',
@@ -39,7 +39,7 @@ export class DepartmentAdminController {
     return this.departmentService.create(createDepartmentDto);
   }
 
-  @Patch('departments/:id')
+  @Patch(':id')
   @ApiOperation({
     summary: 'Update a department',
     description: 'Updates a department using the provided details.',
@@ -55,7 +55,7 @@ export class DepartmentAdminController {
     return this.departmentService.update(id, dto);
   }
 
-  @Delete('departments/:id')
+  @Delete(':id')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Delete a department',

@@ -4,11 +4,11 @@ import { CompanyModule } from '../company/company.module.js';
 import { SalaryCertificateController } from './salary-certificate.controller.js';
 import { SalaryCertificateService } from './salary-certificate.service.js';
 import { SalaryCertificateRepository } from './salary-certificate.repository.js';
-import { SalaryCertificateAdminController } from './salary-certificate-admin.controller.js';
 
 @Module({
   imports: [EmployeesModule, CompanyModule],
-  controllers: [SalaryCertificateController, SalaryCertificateAdminController],
+  controllers: [SalaryCertificateController],
   providers: [SalaryCertificateService, SalaryCertificateRepository],
+  exports: [SalaryCertificateService],
 })
 export class SalaryCertificateModule {}
